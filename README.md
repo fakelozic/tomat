@@ -55,3 +55,7 @@ The code is in three parts: `src/pomodoro/` (pure logic), `src/tui/` (the termin
 - [docs/codebase-map.md](docs/codebase-map.md): what each file does, and where to change things
 - [docs/decisions.md](docs/decisions.md): why it's built this way, with the memory measurements
 - [docs/data.md](docs/data.md): the history file
+
+## License
+
+MIT, see [LICENSE](LICENSE).

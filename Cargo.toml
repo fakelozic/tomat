@@ -3,6 +3,7 @@ name = "tomat"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.88"
+license = "MIT"
 description = "A plain pomodoro timer that draws a small block under your shell prompt"
 readme = "README.md"
 keywords = ["pomodoro", "timer", "tui", "terminal", "focus"]
