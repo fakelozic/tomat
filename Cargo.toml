@@ -1,0 +1,35 @@
+[package]
+name = "tomat"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "A plain pomodoro timer that draws a small block under your shell prompt"
+readme = "README.md"
+keywords = ["pomodoro", "timer", "tui", "terminal", "focus"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+anyhow = "1.0.104"
+chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+dirs = "7.0.0"
+lexopt = "0.3.2"
+# Only the crossterm backend: the default features add a calendar widget,
+# macros and a layout cache that tomat doesn't use.
+ratatui = { version = "0.30", default-features = false, features = ["crossterm"] }
+signal-hook = "0.3"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+
+# Small over fast: a timer has nothing to compute, and less code means less
+# memory. Measured choices are in docs/decisions.md.
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

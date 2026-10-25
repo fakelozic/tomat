@@ -1,0 +1,38 @@
+# tomat: tools and tasks. `mise tasks` lists the tasks; `mise run <task>` runs one.
+
+[tools]
+# Same toolchain as rust-toolchain.toml; mise installs it through rustup.
+rust = { version = "1.99.1", profile = "minimal", components = "rustfmt,clippy", targets = "x86_64-unknown-linux-musl" }
+
+[tasks.check]
+description = "Everything a change must pass: formatting, lints, tests"
+run = [
+    "cargo fmt --check",
+    "cargo clippy --all-targets -- -D warnings",
+    "cargo test",
+]
+
+[tasks.fmt]
+description = "Check formatting"
+run = "cargo fmt --check"
+
+[tasks.lint]
+description = "Clippy, pedantic, with warnings as errors"
+run = "cargo clippy --all-targets -- -D warnings"
+
+[tasks.test]
+description = "Run the tests, including the whole-screen render tests"
+run = "cargo test"
+
+[tasks.run]
+description = "Try it with 3-second phases, kept out of your real history"
+env = { XDG_DATA_HOME = "{{config_root}}/target/dev-data" }
+run = "cargo run -- -w 0.05 -b 0.05 --no-notify"
+
+[tasks.install]
+description = "Install the static musl build: under 1 MiB of RAM"
+run = "cargo install --locked --path . --target x86_64-unknown-linux-musl"
+
+[tasks.install-glibc]
+description = "Install the usual dynamic build"
+run = "cargo install --locked --path ."

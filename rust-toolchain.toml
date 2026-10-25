@@ -1,0 +1,10 @@
+# The toolchain tomat is developed and released with. rustup reads this file
+# and installs it, with these components and targets, on first use.
+# Keep `[tools] rust` in mise.toml on the same version.
+# (The oldest Rust tomat builds on is `rust-version` in Cargo.toml.)
+[toolchain]
+channel = "1.99.1"
+profile = "minimal"
+components = ["rustfmt", "clippy"]
+# The static build behind `mise run install`.
+targets = ["x86_64-unknown-linux-musl"]
