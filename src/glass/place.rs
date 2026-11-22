@@ -127,12 +127,12 @@ mod tests {
 
     #[test]
     fn starts_top_centre() {
-        assert_eq!(home(SCREEN), (888, 12));
+        assert_eq!(home(SCREEN), (906, 12));
     }
 
     #[test]
     fn snaps_only_when_close() {
-        assert_eq!(settle((895, 525), SCREEN), (888, 519));
+        assert_eq!(settle((913, 525), SCREEN), (906, 519));
         assert_eq!(settle((5, 1030), SCREEN), (12, 1026));
         assert_eq!(settle((300, 300), SCREEN), (300, 300));
     }
@@ -148,8 +148,8 @@ mod tests {
         let spot = Spot::new(home(SCREEN), SCREEN, "DP-1");
         let read = Spot::parse(&format!("{} {} DP-1\n", spot.x, spot.y)).expect("parses");
         assert_eq!(read, spot);
-        assert_eq!(read.point(SCREEN), (888, 12));
-        assert_eq!(read.point((2560, 1440)).0, 1208);
+        assert_eq!(read.point(SCREEN), (906, 12));
+        assert_eq!(read.point((2560, 1440)).0, 1226);
     }
 
     #[test]

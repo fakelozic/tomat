@@ -215,10 +215,11 @@ mod tests {
     fn the_body_stays_see_through_and_the_time_is_solid() {
         let face = face(Look::Smoked, 1421, 120);
         let bytes = paint(&face).expect("paints");
-        let alpha = |x: usize, y: usize| bytes[(y * 144 + x) * 4 + 3];
+        let width = face.size().0;
+        let alpha = |x: usize, y: usize| bytes[(y * width + x) * 4 + 3];
         assert!((126..=129).contains(&alpha(10, 20)), "50% body");
         assert!(
-            (45..120).any(|x| (12..27).any(|y| alpha(x, y) == 255)),
+            (34..94).any(|x| (12..27).any(|y| alpha(x, y) == 255)),
             "solid digits"
         );
     }
@@ -248,6 +249,32 @@ mod tests {
                 (top + bottom).abs_diff(height) <= slack,
                 "down: {top}..{bottom}"
             );
+        }
+    }
+
+    #[test]
+    fn the_sides_are_as_roomy_as_the_top_and_long_times_still_fit() {
+        let ink = |left: u64| {
+            let face = face(Look::Smoked, left, 120);
+            let (width, height) = face.size();
+            let bytes = paint(&face).expect("paints");
+            let solid: Vec<(usize, usize)> = (3..height - 3)
+                .flat_map(|y| (0..width).map(move |x| (x, y)))
+                .filter(|&(x, y)| bytes[(y * width + x) * 4 + 3] > 200)
+                .collect();
+            let left = solid.iter().map(|at| at.0).min().expect("ink");
+            let right = width - 1 - solid.iter().map(|at| at.0).max().expect("ink");
+            let top = solid.iter().map(|at| at.1).min().expect("ink");
+            (left, right, top)
+        };
+        let (left, right, top) = ink(1421);
+        assert!(
+            left.abs_diff(top) <= 3 && right.abs_diff(top) <= 3,
+            "{left} {right} {top}"
+        );
+        for long in [7200, 999 * 60 + 59] {
+            let (left, right, _) = ink(long);
+            assert!(left >= 5 && right >= 5, "{long}: {left} {right}");
         }
     }
 

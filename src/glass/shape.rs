@@ -1,7 +1,8 @@
 //! The rounded rectangle, for both the paint and the blur behind it.
 
-/// The glass's size, in logical pixels.
-pub(super) const WIDTH: i32 = 144;
+/// The glass's size, in logical pixels. The width leaves the same room beside
+/// `MM:SS` as above and below it, and still fits `120:00`.
+pub(super) const WIDTH: i32 = 108;
 /// See [`WIDTH`].
 pub(super) const HEIGHT: i32 = 42;
 /// The corner radius, in logical pixels.

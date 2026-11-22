@@ -2,6 +2,11 @@
 
 Newest first.
 
+## 2026-11-23: The glass is 108 px wide
+- **Decision:** 108 x 42, down from 144 x 42. The room beside `MM:SS` now matches the room above and below it.
+- **Why:** the wide sides were empty space covering what's behind.
+- **Limit:** times of 100 minutes and more (`120:00`) still fit, with less room at the sides. The width is fixed, so it never jumps while counting.
+
 ## 2026-11-23: No orange ring while the glass is movable
 - **Decision:** the glass looks the same whether it can be dragged or not. The grab cursor over it is the cue. The thin neutral edge stays.
 - **Why:** an orange ring competes with the square, whose color is the state.
