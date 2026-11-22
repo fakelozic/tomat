@@ -1,0 +1,25 @@
+[package]
+name = "tomat-window"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.92"
+license = "MIT"
+publish = false
+description = "tomat's window. It runs only while it is open"
+
+[dependencies]
+anyhow = "1.0.104"
+rustix = { version = "1.1", features = ["event"] }
+slint = { version = "1.19", default-features = false, features = ["std", "compat-1-2", "backend-winit", "renderer-software"] }
+tomat = { path = ".." }
+
+[build-dependencies]
+slint-build = "1.19"
+
+# Not the workspace's forbid: Slint's generated tables need unsafe, and only `src/ui.rs` allows it.
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"

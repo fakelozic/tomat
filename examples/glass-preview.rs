@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use lexopt::prelude::*;
 use tomat::glass::{Glass, Phase, Showing};
+use tomat::paths::Paths;
 
 /// A pretend round: a focus, its break, then a pause, so every colour gets seen.
 fn pretend(elapsed: Duration) -> Showing {
@@ -19,16 +20,8 @@ fn pretend(elapsed: Duration) -> Showing {
         20..40 => (Phase::Break, false, 252),
         _ => (Phase::Focus, true, 1421),
     };
-    let left: u16 = if paused {
-        start
-    } else {
-        start - u16::try_from(at % 20).unwrap_or_default()
-    };
-    Showing {
-        phase,
-        paused,
-        left: Duration::from_secs(left.into()),
-    }
+    let left: u16 = if paused { start } else { start - u16::try_from(at % 20).unwrap_or_default() };
+    Showing { phase, paused, left: Duration::from_secs(left.into()) }
 }
 
 fn main() -> Result<()> {
@@ -42,16 +35,14 @@ fn main() -> Result<()> {
         }
     }
     let stop = Arc::new(AtomicBool::new(false));
-    for signal in [
-        signal_hook::consts::SIGINT,
-        signal_hook::consts::SIGTERM,
-        signal_hook::consts::SIGHUP,
-    ] {
+    for signal in [signal_hook::consts::SIGINT, signal_hook::consts::SIGTERM, signal_hook::consts::SIGHUP] {
         signal_hook::flag::register(signal, Arc::clone(&stop))?;
     }
 
     let started = Instant::now();
-    let mut glass = Glass::open(pretend(Duration::ZERO))?;
+    let paths = Paths::find()?;
+    tomat::log::start(tomat::log::Process::App, &paths.logs(), &paths.home);
+    let mut glass = Glass::open(&paths, pretend(Duration::ZERO))?;
     while !stop.load(Ordering::Relaxed) {
         let elapsed = started.elapsed();
         if elapsed.as_secs() >= run_for {
@@ -60,7 +51,7 @@ fn main() -> Result<()> {
         glass.set_movable(elapsed.as_secs() < movable_for);
         glass.show(pretend(elapsed));
         let next_second = 1000 - u64::from(elapsed.subsec_millis());
-        glass.wait(Duration::from_millis(next_second))?;
+        glass.wait(Duration::from_millis(next_second), &[])?;
     }
     Ok(())
 }

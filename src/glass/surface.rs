@@ -27,12 +27,9 @@ use wayland_protocols::wp::cursor_shape::v1::client::{
     wp_cursor_shape_manager_v1::WpCursorShapeManagerV1,
 };
 use wayland_protocols::wp::fractional_scale::v1::client::{
-    wp_fractional_scale_manager_v1::WpFractionalScaleManagerV1,
-    wp_fractional_scale_v1::WpFractionalScaleV1,
+    wp_fractional_scale_manager_v1::WpFractionalScaleManagerV1, wp_fractional_scale_v1::WpFractionalScaleV1,
 };
-use wayland_protocols::wp::viewporter::client::{
-    wp_viewport::WpViewport, wp_viewporter::WpViewporter,
-};
+use wayland_protocols::wp::viewporter::client::{wp_viewport::WpViewport, wp_viewporter::WpViewporter};
 use wayland_protocols::xdg::xdg_output::zv1::client::{
     zxdg_output_manager_v1::ZxdgOutputManagerV1, zxdg_output_v1::ZxdgOutputV1,
 };
@@ -44,9 +41,9 @@ use wayland_protocols_wlr::layer_shell::v1::client::{
 use super::Showing;
 use super::buffers::Buffers;
 use super::paint::{self, Face, SCALE_ONE};
-use super::palette::Look;
 use super::place::{self, Pair, Spot};
 use super::shape::{self, HEIGHT, WIDTH};
+use crate::theme::Look;
 
 /// KDE keeps "dock" surfaces up during Show Desktop. Any other name gets hidden.
 const SCOPE: &str = "dock";
@@ -196,9 +193,7 @@ impl State {
     ) -> Result<Self> {
         let shell = Shell {
             compositor: globals.bind(handle, 4..=4, ()).context("no compositor")?,
-            shm: globals
-                .bind(handle, 1..=1, ())
-                .context("no shared memory")?,
+            shm: globals.bind(handle, 1..=1, ()).context("no shared memory")?,
             layers: globals
                 .bind(handle, 2..=4, ())
                 .context("this desktop can't float a surface on top (no layer shell)")?,
@@ -245,26 +240,12 @@ impl State {
         }
         let handle = &self.shell.handle;
         let output: WlOutput = registry.bind(global, version.min(4), handle, ());
-        let info = self
-            .shell
-            .outputs
-            .as_ref()
-            .map(|manager| manager.get_xdg_output(&output, handle, output.clone()));
-        self.monitors.push(Monitor {
-            global,
-            output,
-            info,
-            name: String::new(),
-            size: None,
-        });
+        let info = self.shell.outputs.as_ref().map(|manager| manager.get_xdg_output(&output, handle, output.clone()));
+        self.monitors.push(Monitor { global, output, info, name: String::new(), size: None });
     }
 
     pub(super) fn remove_monitor(&mut self, global: u32) {
-        let Some(index) = self
-            .monitors
-            .iter()
-            .position(|monitor| monitor.global == global)
-        else {
+        let Some(index) = self.monitors.iter().position(|monitor| monitor.global == global) else {
             return;
         };
         if self.on.as_ref() == Some(&self.monitors[index].output) {
@@ -275,6 +256,7 @@ impl State {
 
     /// The compositor took the glass away. It comes back by itself.
     pub(super) fn closed(&mut self) {
+        crate::log::warn("glass.closed", "the display took it away: it comes back by itself");
         self.drag = None;
         self.catcher = None;
         self.pill = None;
@@ -294,11 +276,7 @@ impl State {
         if let Some(drag) = &self.drag {
             return Some(drag.point);
         }
-        Some(
-            self.spot
-                .as_ref()
-                .map_or_else(|| place::home(screen), |spot| spot.point(screen)),
-        )
+        Some(self.spot.as_ref().map_or_else(|| place::home(screen), |spot| spot.point(screen)))
     }
 
     /// How long until this needs to run again without an event.
@@ -337,11 +315,7 @@ impl State {
         if let Some(point) = point
             && pill.placed != Some(point)
         {
-            let too_soon = self
-                .drag
-                .as_ref()
-                .and_then(|drag| drag.sent)
-                .is_some_and(|sent| now < sent + MOVE_EVERY);
+            let too_soon = self.drag.as_ref().and_then(|drag| drag.sent).is_some_and(|sent| now < sent + MOVE_EVERY);
             if !too_soon {
                 pill.layer.set_anchor(Anchor::Top | Anchor::Left);
                 pill.layer.set_margin(point.1, 0, 0, point.0);
@@ -354,18 +328,9 @@ impl State {
         }
         if pill.drawn.as_ref() != Some(&face) {
             let size = face.size();
-            if self
-                .buffers
-                .as_ref()
-                .is_none_or(|buffers| buffers.size() != size)
-            {
+            if self.buffers.as_ref().is_none_or(|buffers| buffers.size() != size) {
                 self.generation = self.generation.wrapping_add(1);
-                self.buffers = Some(Buffers::new(
-                    &self.shell.shm,
-                    &self.shell.handle,
-                    size,
-                    self.generation,
-                )?);
+                self.buffers = Some(Buffers::new(&self.shell.shm, &self.shell.handle, size, self.generation)?);
             }
             // With both buffers busy, the release event brings us back here.
             if let Some(buffers) = self.buffers.as_mut()
@@ -387,9 +352,7 @@ impl State {
     fn open_pill(&mut self) {
         let shell = &self.shell;
         let wanted = self.spot.as_ref().and_then(|spot| {
-            self.monitors
-                .iter()
-                .find(|monitor| !monitor.name.is_empty() && monitor.name == spot.monitor)
+            self.monitors.iter().find(|monitor| !monitor.name.is_empty() && monitor.name == spot.monitor)
         });
         self.on = wanted.map(|monitor| monitor.output.clone());
 
@@ -424,23 +387,12 @@ impl State {
             region.destroy();
             effect
         });
-        let fractional = shell
-            .scales
-            .as_ref()
-            .map(|scales| scales.get_fractional_scale(&surface, handle, ()));
+        let fractional = shell.scales.as_ref().map(|scales| scales.get_fractional_scale(&surface, handle, ()));
         let viewport = shell.viewporter.get_viewport(&surface, handle, ());
         viewport.set_destination(WIDTH, HEIGHT);
         surface.commit();
-        self.pill = Some(Pill {
-            surface,
-            layer,
-            viewport,
-            effect,
-            fractional,
-            ready: false,
-            drawn: None,
-            placed: None,
-        });
+        self.pill =
+            Some(Pill { surface, layer, viewport, effect, fractional, ready: false, drawn: None, placed: None });
     }
 
     fn update_catcher(&mut self) -> Result<()> {
@@ -473,14 +425,7 @@ impl State {
             nothing.destroy();
             let viewport = shell.viewporter.get_viewport(&surface, handle, ());
             surface.commit();
-            Catcher {
-                surface,
-                layer,
-                viewport,
-                clear: None,
-                size: None,
-                set_for: None,
-            }
+            Catcher { surface, layer, viewport, clear: None, size: None, set_for: None }
         });
         let Some(size) = catcher.size else {
             return Ok(());
@@ -513,24 +458,14 @@ impl State {
     }
 
     pub(super) fn press(&mut self) {
-        let (Some(pointer), Some(start), Some(_)) = (&self.pointer, self.point(), &self.catcher)
-        else {
+        let (Some(pointer), Some(start), Some(_)) = (&self.pointer, self.point(), &self.catcher) else {
             return;
         };
-        self.drag = Some(Drag {
-            from: pointer.at,
-            start,
-            point: start,
-            moved: false,
-            sent: None,
-        });
+        self.drag = Some(Drag { from: pointer.at, start, point: start, moved: false, sent: None });
         self.show_cursor(Shape::Grabbing);
     }
 
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "pointer positions fit a monitor"
-    )]
+    #[expect(clippy::cast_possible_truncation, reason = "pointer positions fit a monitor")]
     pub(super) fn pointer_moved(&mut self, at: (f64, f64)) {
         if let Some(pointer) = self.pointer.as_mut() {
             pointer.at = at;
@@ -541,10 +476,7 @@ impl State {
         let Some(drag) = self.drag.as_mut() else {
             return;
         };
-        let by = (
-            (at.0 - drag.from.0).round() as i32,
-            (at.1 - drag.from.1).round() as i32,
-        );
+        let by = ((at.0 - drag.from.0).round() as i32, (at.1 - drag.from.1).round() as i32);
         if by != (0, 0) || drag.moved {
             drag.moved = true;
             drag.point = place::settle((drag.start.0 + by.0, drag.start.1 + by.1), screen);
@@ -558,16 +490,13 @@ impl State {
         if !drag.moved {
             return;
         }
-        let Some(spot) = self
-            .here()
-            .map(|(monitor, screen)| Spot::new(drag.point, screen, &monitor.name))
-        else {
+        let Some(spot) = self.here().map(|(monitor, screen)| Spot::new(drag.point, screen, &monitor.name)) else {
             return;
         };
         if let Some(file) = &self.file
             && let Err(error) = spot.save(file)
         {
-            eprintln!("tomat: couldn't save the glass's place: {error}");
+            crate::log::warn("glass.place_not_saved", &error.to_string());
         }
         self.spot = Some(spot);
     }
@@ -576,8 +505,7 @@ impl State {
 /// One see-through pixel, stretched over the monitor. A full-size buffer would cost 8 MB at 1080p.
 fn clear_pixel(shell: &Shell) -> Result<WlBuffer> {
     let file = File::from(
-        rustix::fs::memfd_create("tomat-clear", rustix::fs::MemfdFlags::CLOEXEC)
-            .context("no shared memory")?,
+        rustix::fs::memfd_create("tomat-clear", rustix::fs::MemfdFlags::CLOEXEC).context("no shared memory")?,
     );
     file.set_len(4)?;
     let pool = shell.shm.create_pool(file.as_fd(), 4, &shell.handle, ());

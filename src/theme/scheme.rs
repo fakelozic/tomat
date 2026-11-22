@@ -3,13 +3,14 @@
 use std::io::Read;
 use std::path::Path;
 
-use super::palette::Look;
+use super::Look;
 
 /// No real colour file comes near this. It bounds what a bad one can cost.
 const LIMIT: u64 = 1024 * 1024;
 
 /// The look for the desktop's current colours. KDE's own default is light.
-pub(super) fn current(config: &Path) -> Look {
+#[must_use]
+pub fn current(config: &Path) -> Look {
     ["kdeglobals", "kdedefaults/kdeglobals"]
         .iter()
         .filter_map(|name| read(&config.join(name)))
@@ -23,11 +24,7 @@ fn read(path: &Path) -> Option<String> {
         return None;
     }
     let mut bytes = Vec::new();
-    std::fs::File::open(path)
-        .ok()?
-        .take(LIMIT)
-        .read_to_end(&mut bytes)
-        .ok()?;
+    std::fs::File::open(path).ok()?.take(LIMIT).read_to_end(&mut bytes).ok()?;
     Some(String::from_utf8_lossy(&bytes).into_owned())
 }
 
@@ -40,11 +37,7 @@ fn look_of(text: &str) -> Option<Look> {
         } else if in_window && let Some(value) = line.strip_prefix("BackgroundNormal=") {
             let [r, g, b] = rgb(value)?.map(f32::from);
             let brightness = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-            return Some(if brightness > 127.5 {
-                Look::Light
-            } else {
-                Look::Smoked
-            });
+            return Some(if brightness > 127.5 { Look::Light } else { Look::Smoked });
         }
     }
     None

@@ -7,36 +7,23 @@ rust = { version = "1.99.1", profile = "minimal", components = "rustfmt,clippy",
 [tasks.check]
 description = "Everything a change must pass: formatting, lints, tests"
 run = [
-    "cargo fmt --check",
-    "cargo clippy --all-targets -- -D warnings",
-    "cargo test",
+    "cargo fmt --all --check",
+    "cargo clippy --workspace --all-targets --locked -- -D warnings",
+    "cargo test --workspace --locked",
 ]
 
-[tasks.fmt]
-description = "Check formatting"
-run = "cargo fmt --check"
+[tasks.build]
+description = "Build both programs: the app static, the window dynamic"
+run = [
+    "cargo build --release --locked -p tomat --bin tomat --target x86_64-unknown-linux-musl",
+    "cargo build --release --locked -p tomat-window",
+]
 
-[tasks.lint]
-description = "Clippy, pedantic, with warnings as errors"
-run = "cargo clippy --all-targets -- -D warnings"
-
-[tasks.test]
-description = "Run the tests, including the whole-screen render tests"
-run = "cargo test"
-
-[tasks.run]
-description = "Try it with 3-second phases, kept out of your real history"
-env = { XDG_DATA_HOME = "{{config_root}}/target/dev-data" }
-run = "cargo run -- -w 0.05 -b 0.05 --no-notify"
+[tasks.install]
+description = "Build, then install for this user: menu entry, icon, ~/.local/bin/tomat"
+depends = ["build"]
+run = "scripts/install.sh"
 
 [tasks.glass]
 description = "Preview the glass: draggable for 30 seconds, then click-through, gone after 10 minutes (Ctrl-C stops it)"
-run = "cargo run --release --locked --target x86_64-unknown-linux-musl --example glass-preview"
-
-[tasks.install]
-description = "Install the static musl build: under 1 MiB of RAM"
-run = "cargo install --locked --path . --target x86_64-unknown-linux-musl"
-
-[tasks.install-glibc]
-description = "Install the usual dynamic build"
-run = "cargo install --locked --path ."
+run = "cargo run -p tomat --release --locked --target x86_64-unknown-linux-musl --example glass-preview"

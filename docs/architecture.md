@@ -1,58 +1,44 @@
 # Architecture
 
-tomat is one small binary with three areas, plus the wiring that connects them:
+Two programs, so the one that stays is tiny:
 
 ```
-                       ┌──────────── src/main.rs (wiring) ─────────────┐
- keys ─► tui::keys ─Action─► pomodoro::App ─Effect─► notify / record / quit
-                                  │                       │
-                    tui::view ◄───┘ reads App every frame  ├─► system::Notifier (bell + notify-send)
-                         │                                 └─► system::History  (log.csv)
-                         ▼
-               terminal (ratatui + crossterm, inline viewport)
+ menu / terminal ─► tomat ── already running? knock on its door and exit
+                      │
+                      ▼
+      ┌──────────── tomat (static, about 1 MiB) ────────────┐
+      │ host ── timer (pure)                                │
+      │   ├──── glass ─► KWin: layer surface + blur         │
+      │   ├──── door (unix socket): "show the window"       │
+      │   └──── log, saved slots, crash copy of the timer   │
+      └───────────────┬─────────────────────────────────────┘
+               socketpair, one line per message (link.rs)
+                      ▼
+        tomat-window (Slint, about 17 MiB, only while open)
 ```
 
-| Area | Folder | Job | May touch |
-|---|---|---|---|
-| Pomodoro | `src/pomodoro/` | Decides everything: plans, the countdown, what happens on each key and when a phase ends | Nothing: pure functions of their inputs |
-| TUI | `src/tui/` | Keys in, frames out: key bindings, layout, screens, widgets, font, colors | The frame it is given |
-| System | `src/system/` | Carries out effects: desktop notifications, the history file | Processes and disk |
-| Wiring | `src/main.rs`, `src/cli.rs` | Reads flags, builds the app, runs the loop, routes effects | Everything, but decides nothing |
+| Area | Job | May touch |
+|---|---|---|
+| `timer`, `plan`, `link` | The rules, the slots, the messages | Nothing: pure |
+| `host` | Owns the timer, decides what opens and closes | Files, processes, sockets |
+| `glass` | Shows what it's given, decides where it sits | Wayland, its saved place |
+| `theme` | Dark or light | Reads KDE's color file |
+| `window/` | Shows what the app says, reports presses | Its socket, the theme |
 
-Dependencies point one way: `tui` and `system` use `pomodoro`; `pomodoro` uses neither.
+Dependencies point one way: the window uses the library, and the library knows nothing of the toolkit.
 
-## The glass (`src/glass/`, library)
-The graphical timer that replaces the TUI. It is built, and tried with `mise run glass`, but not wired to the timer yet.
+## Life cycle
+- **Open:** the first tomat takes a lock and becomes the app. Later ones knock on its socket and exit. From a terminal it first starts itself detached, in its own session.
+- **Start:** the window closes and gives its memory back. The timer and the glass stay.
+- **Open again:** a new window replaces any old one, because Wayland can't raise another program's window. While a window is open the glass can be dragged.
+- **Stop:** the glass goes and the crash copy is erased. Closing the window then ends everything.
+- **The app dies:** the window sees its socket close and leaves. The next open restores the timer.
+- **The display goes:** the glass retries every 2 seconds. After a minute with neither, the app saves and leaves.
 
-```
- caller ─Showing─► Glass ─► surface::State ─Face─► paint ─► two shm buffers ─► KWin (blurs behind)
-                     │            ▲
- kdeglobals ─inotify─┘            └── protocols: monitors, scale, blur on/off, pointer
-```
-
-- `Glass::wait` is the only loop: it sleeps until the display, the colour file or the caller's timeout wakes it.
-- The surface is redrawn only when its `Face` changes: second, phase, look, blur or scale.
-- The caller decides what time to show and whether it can be moved. The glass decides where it sits and saves that.
-
-## The loop (`main.rs::event_loop`)
-1. Draw the frame from the current `App`.
-2. Sleep until something on screen will change, or a key arrives. While a phase runs, that is the next clock second or the next 200 ms animation step, whichever comes first (`App::next_change`). Otherwise it is one second, so a stop signal is noticed and finished `notify-send` processes are collected.
-3. Call `App::tick(now)` **first**: a phase that ran out before the key arrived is finished, recorded and announced before the key acts.
-4. Map a key to an `Action` (`tui::action_for`) and call `App::handle`.
-5. Collect finished `notify-send` processes, then carry out the effects, with `Quit` last so a finish in the same pass is still recorded.
-6. Stop when the app quits or a signal (SIGTERM, SIGHUP, SIGINT, SIGQUIT) sets the stop flag.
-
-## The terminal (`main.rs`)
-- `open_terminal` turns on raw mode and creates an inline viewport of `tui::HEIGHT` rows. Without a usable terminal it returns an error ("no interactive terminal") instead of panicking.
-- `close_terminal` clears the block, puts the cursor where tomat started, and turns raw mode off.
-- tomat doesn't use `ratatui::init`/`restore`: they assume the alternate screen, and leaving it moves the cursor in tmux and xterm.
-- A panic hook restores the terminal too. Release builds abort on panic, so the hook is the only cleanup a panic gets.
-
-## Where state lives
-- **In memory:** all of it, inside `App`. A `Session` holds the `Plan`, the current `Phase` and the `Timer`.
-- **On disk:** only the history (`system/history.rs`, see `data.md`). It is read once at startup for the "today" count.
+## The loop (`host.rs`)
+One thread, asleep in poll on the display, the theme's inotify, the window's socket, the door and the signals. It wakes by itself once a second while counting, and not while paused. The glass redraws only when its face changes.
 
 ## Key choices
-- **Pure core, thin edges.** The logic takes the current time (`SystemTime`) as an argument and returns effects, so it is tested without a terminal, a clock or mocks. Even the bar's animation is a pure function of the elapsed time.
-- **Wall-clock time.** The timer counts `SystemTime` from start and pause moments, not counted ticks, so a slow frame can't make it drift. It also keeps counting while the laptop is suspended: a break due at 12:30 ends at 12:30. A clock set backwards counts as no time.
-- **Small at runtime.** No async runtime, no linked D-Bus client, no CLI framework. See `decisions.md` for the measurements behind each choice.
+- **Pure core.** Time is passed in, so the timer is tested without a clock.
+- **Wall-clock time.** A break due at 12:30 ends at 12:30, even through sleep. A clock set backwards counts as no time.
+- **Nothing waits on the window.** Its socket is nonblocking on the app's side, and a window that won't leave is killed after a second.

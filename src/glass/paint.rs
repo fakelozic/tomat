@@ -4,9 +4,11 @@ use std::time::Duration;
 
 use anyhow::Result;
 
-use super::palette::{Colour, Look, palette};
+use super::palette::{Colour, palette};
 use super::shape::{self, HEIGHT, RADIUS, WIDTH};
-use super::{Phase, Showing, digits};
+use super::{Showing, digits};
+use crate::theme::Look;
+use crate::timer::Phase;
 
 const SQUARE: f32 = 9.0;
 const SQUARE_TOP: f32 = 16.5;
@@ -29,14 +31,7 @@ pub(super) struct Face {
 
 impl Face {
     pub(super) fn new(showing: Showing, look: Look, frosted: bool, scale: u32) -> Self {
-        Self {
-            phase: showing.phase,
-            paused: showing.paused,
-            clock: clock(showing.left),
-            look,
-            frosted,
-            scale,
-        }
+        Self { phase: showing.phase, paused: showing.paused, clock: clock(showing.left), look, frosted, scale }
     }
 
     pub(super) fn size(&self) -> (usize, usize) {
@@ -46,25 +41,18 @@ impl Face {
 
 /// The bitmap's size, rounded the way the fractional-scale protocol says.
 fn size(scale: u32) -> (usize, usize) {
-    let one =
-        |logical: i32| ((logical.unsigned_abs() * scale + SCALE_ONE / 2) / SCALE_ONE) as usize;
+    let one = |logical: i32| ((logical.unsigned_abs() * scale + SCALE_ONE / 2) / SCALE_ONE) as usize;
     (one(WIDTH), one(HEIGHT))
 }
 
 /// `MM:SS`, rounded up, so a fresh timer reads 30:00 and not 29:59.
 fn clock(left: Duration) -> String {
-    let seconds = left
-        .as_secs()
-        .saturating_add(u64::from(left.subsec_nanos() > 0))
-        .min(999 * 60 + 59);
+    let seconds = left.as_secs().saturating_add(u64::from(left.subsec_nanos() > 0)).min(999 * 60 + 59);
     format!("{:02}:{:02}", seconds / 60, seconds % 60)
 }
 
 /// Premultiplied ARGB, as Wayland wants it.
-#[expect(
-    clippy::cast_precision_loss,
-    reason = "the bitmap is a few hundred pixels across"
-)]
+#[expect(clippy::cast_precision_loss, reason = "the bitmap is a few hundred pixels across")]
 pub(super) fn paint(face: &Face) -> Result<Vec<u8>> {
     let (width, height) = face.size();
     let scale = face.scale as f32 / SCALE_ONE as f32;
@@ -73,15 +61,10 @@ pub(super) fn paint(face: &Face) -> Result<Vec<u8>> {
 
     let group = SQUARE + SPACE + digits::width(&face.clock);
     let square_left = ((WIDTH as f32 - group) / 2.0 * scale).round();
-    let text_at = (
-        (square_left + (SQUARE + SPACE) * scale).round(),
-        (BASELINE * scale).round(),
-    );
+    let text_at = ((square_left + (SQUARE + SPACE) * scale).round(), (BASELINE * scale).round());
     let mut text = vec![0.0; width * height];
     digits::draw(&mut text, (width, height), &face.clock, text_at, scale)?;
-    let outline = colours
-        .outline
-        .map(|colour| (colour, spread(&text, (width, height), scale)));
+    let outline = colours.outline.map(|colour| (colour, spread(&text, (width, height), scale)));
 
     let square_top = (SQUARE_TOP * scale).round();
     let square_side = (SQUARE * scale).round();
@@ -95,13 +78,7 @@ pub(super) fn paint(face: &Face) -> Result<Vec<u8>> {
             over(&mut pixel, colours.body, inside);
             let border = inside - shape::coverage(edge + colours.border_width * scale);
             over(&mut pixel, colours.border, border);
-            let square = shape::distance(
-                px - square_left,
-                py - square_top,
-                square_side,
-                square_side,
-                1.5 * scale,
-            );
+            let square = shape::distance(px - square_left, py - square_top, square_side, square_side, 1.5 * scale);
             over(&mut pixel, colours.accent, shape::coverage(square));
             let at = y * width + x;
             if let Some((colour, halo)) = &outline {
@@ -123,22 +100,14 @@ fn over(pixel: &mut [f32; 4], colour: Colour, coverage: f32) {
     pixel[3] = alpha + pixel[3] * (1.0 - alpha);
 }
 
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "clamped to a byte"
-)]
+#[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "clamped to a byte")]
 fn argb(pixel: [f32; 4]) -> u32 {
     let [r, g, b, a] = pixel.map(|part| (part.clamp(0.0, 1.0) * 255.0).round() as u8);
     u32::from_be_bytes([a, r, g, b])
 }
 
 /// The text grown by about a pixel: its outline.
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_precision_loss,
-    reason = "offsets of a pixel or two"
-)]
+#[expect(clippy::cast_possible_truncation, clippy::cast_precision_loss, reason = "offsets of a pixel or two")]
 fn spread(mask: &[f32], (width, height): (usize, usize), radius: f32) -> Vec<f32> {
     let reach = radius.ceil() as isize;
     let mut near = Vec::new();
@@ -158,8 +127,7 @@ fn spread(mask: &[f32], (width, height): (usize, usize), radius: f32) -> Vec<f32
                 continue;
             }
             for &(across, down, weight) in &near {
-                if let (Some(x), Some(y)) =
-                    (x.checked_add_signed(across), y.checked_add_signed(down))
+                if let (Some(x), Some(y)) = (x.checked_add_signed(across), y.checked_add_signed(down))
                     && x < width
                     && y < height
                 {
@@ -177,17 +145,13 @@ mod tests {
     use super::*;
 
     fn face(look: Look, left: u64, scale: u32) -> Face {
-        let showing = Showing {
-            phase: Phase::Focus,
-            paused: false,
-            left: Duration::from_secs(left),
-        };
+        let showing = Showing { phase: Phase::Focus, paused: false, left: Duration::from_secs(left) };
         Face::new(showing, look, true, scale)
     }
 
     #[test]
     fn the_clock_rounds_up() {
-        assert_eq!(clock(Duration::from_secs(1800)), "30:00");
+        assert_eq!(clock(Duration::from_mins(30)), "30:00");
         assert_eq!(clock(Duration::from_millis(1_799_001)), "30:00");
         assert_eq!(clock(Duration::ZERO), "00:00");
         assert_eq!(clock(Duration::from_secs(7200)), "120:00");
@@ -218,10 +182,7 @@ mod tests {
         let width = face.size().0;
         let alpha = |x: usize, y: usize| bytes[(y * width + x) * 4 + 3];
         assert!((126..=129).contains(&alpha(10, 20)), "50% body");
-        assert!(
-            (34..94).any(|x| (12..27).any(|y| alpha(x, y) == 255)),
-            "solid digits"
-        );
+        assert!((34..94).any(|x| (12..27).any(|y| alpha(x, y) == 255)), "solid digits");
     }
 
     #[test]
@@ -241,14 +202,8 @@ mod tests {
             let top = solid.iter().map(|at| at.1).min().expect("ink");
             let bottom = solid.iter().map(|at| at.1).max().expect("ink") + 1;
             let slack = usize::try_from(scale.div_ceil(120) * 2).expect("small");
-            assert!(
-                (left + right).abs_diff(width) <= slack * 2,
-                "across: {left}..{right}"
-            );
-            assert!(
-                (top + bottom).abs_diff(height) <= slack,
-                "down: {top}..{bottom}"
-            );
+            assert!((left + right).abs_diff(width) <= slack * 2, "across: {left}..{right}");
+            assert!((top + bottom).abs_diff(height) <= slack, "down: {top}..{bottom}");
         }
     }
 
@@ -268,10 +223,7 @@ mod tests {
             (left, right, top)
         };
         let (left, right, top) = ink(1421);
-        assert!(
-            left.abs_diff(top) <= 3 && right.abs_diff(top) <= 3,
-            "{left} {right} {top}"
-        );
+        assert!(left.abs_diff(top) <= 3 && right.abs_diff(top) <= 3, "{left} {right} {top}");
         for long in [7200, 999 * 60 + 59] {
             let (left, right, _) = ink(long);
             assert!(left >= 5 && right >= 5, "{long}: {left} {right}");

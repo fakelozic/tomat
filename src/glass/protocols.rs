@@ -26,9 +26,7 @@ use wayland_protocols::wp::fractional_scale::v1::client::{
     wp_fractional_scale_manager_v1::WpFractionalScaleManagerV1,
     wp_fractional_scale_v1::{self, WpFractionalScaleV1},
 };
-use wayland_protocols::wp::viewporter::client::{
-    wp_viewport::WpViewport, wp_viewporter::WpViewporter,
-};
+use wayland_protocols::wp::viewporter::client::{wp_viewport::WpViewport, wp_viewporter::WpViewporter};
 use wayland_protocols::xdg::xdg_output::zv1::client::{
     zxdg_output_manager_v1::ZxdgOutputManagerV1,
     zxdg_output_v1::{self, ZxdgOutputV1},
@@ -55,11 +53,7 @@ impl Dispatch<WlRegistry, GlobalListContents> for State {
         _: &QueueHandle<Self>,
     ) {
         match event {
-            wl_registry::Event::Global {
-                name,
-                interface,
-                version,
-            } if interface == WlOutput::interface().name => {
+            wl_registry::Event::Global { name, interface, version } if interface == WlOutput::interface().name => {
                 state.add_monitor(registry, name, version);
             }
             wl_registry::Event::GlobalRemove { name } => state.remove_monitor(name),
@@ -130,14 +124,7 @@ impl Dispatch<ZwlrLayerSurfaceV1, Role> for State {
         _: &QueueHandle<Self>,
     ) {
         match (event, role) {
-            (
-                zwlr_layer_surface_v1::Event::Configure {
-                    serial,
-                    width,
-                    height,
-                },
-                role,
-            ) => {
+            (zwlr_layer_surface_v1::Event::Configure { serial, width, height }, role) => {
                 layer.ack_configure(serial);
                 match role {
                     Role::Pill => {
@@ -146,11 +133,9 @@ impl Dispatch<ZwlrLayerSurfaceV1, Role> for State {
                         }
                     }
                     Role::Catcher => {
-                        if let (Some(catcher), Ok(width @ 1..), Ok(height @ 1..)) = (
-                            state.catcher.as_mut(),
-                            i32::try_from(width),
-                            i32::try_from(height),
-                        ) {
+                        if let (Some(catcher), Ok(width @ 1..), Ok(height @ 1..)) =
+                            (state.catcher.as_mut(), i32::try_from(width), i32::try_from(height))
+                        {
                             catcher.size = Some((width, height));
                         }
                     }
@@ -172,10 +157,15 @@ impl Dispatch<ExtBackgroundEffectManagerV1, ()> for State {
         _: &QueueHandle<Self>,
     ) {
         if let ext_background_effect_manager_v1::Event::Capabilities { flags } = event {
-            state.blur = matches!(
+            let blur = matches!(
                 flags,
                 WEnum::Value(flags) if flags.contains(ext_background_effect_manager_v1::Capability::Blur)
             );
+            // Only losing it is worth a line. Having it at the start would mark every timer's start.
+            if state.blur && !blur {
+                crate::log::warn("glass.blur_off", "blur was switched off: the glass is nearly solid");
+            }
+            state.blur = blur;
         }
     }
 }
@@ -219,10 +209,7 @@ impl Dispatch<WlSeat, ()> for State {
         _: &Connection,
         handle: &QueueHandle<Self>,
     ) {
-        let wl_seat::Event::Capabilities {
-            capabilities: WEnum::Value(can),
-        } = event
-        else {
+        let wl_seat::Event::Capabilities { capabilities: WEnum::Value(can) } = event else {
             return;
         };
         if !can.contains(wl_seat::Capability::Pointer) {
@@ -230,17 +217,8 @@ impl Dispatch<WlSeat, ()> for State {
             state.pointer = None;
         } else if state.pointer.is_none() {
             let pointer = seat.get_pointer(handle, ());
-            let cursor = state
-                .shell
-                .cursors
-                .as_ref()
-                .map(|cursors| cursors.get_pointer(&pointer, handle, ()));
-            state.pointer = Some(Pointer {
-                device: pointer,
-                cursor,
-                serial: 0,
-                at: (0.0, 0.0),
-            });
+            let cursor = state.shell.cursors.as_ref().map(|cursors| cursors.get_pointer(&pointer, handle, ()));
+            state.pointer = Some(Pointer { device: pointer, cursor, serial: 0, at: (0.0, 0.0) });
         }
     }
 }
@@ -256,30 +234,17 @@ impl Dispatch<WlPointer, ()> for State {
     ) {
         match event {
             // Only the catcher takes input, so every position here is on the monitor.
-            wl_pointer::Event::Enter {
-                serial,
-                surface_x,
-                surface_y,
-                ..
-            } => {
+            wl_pointer::Event::Enter { serial, surface_x, surface_y, .. } => {
                 if let Some(pointer) = state.pointer.as_mut() {
                     pointer.serial = serial;
                     pointer.at = (surface_x, surface_y);
                 }
                 state.show_cursor(Shape::Grab);
             }
-            wl_pointer::Event::Motion {
-                surface_x,
-                surface_y,
-                ..
-            } => {
+            wl_pointer::Event::Motion { surface_x, surface_y, .. } => {
                 state.pointer_moved((surface_x, surface_y));
             }
-            wl_pointer::Event::Button {
-                button: LEFT_BUTTON,
-                state: WEnum::Value(pressed),
-                ..
-            } => {
+            wl_pointer::Event::Button { button: LEFT_BUTTON, state: WEnum::Value(pressed), .. } => {
                 if pressed == wl_pointer::ButtonState::Pressed {
                     state.press();
                 } else {

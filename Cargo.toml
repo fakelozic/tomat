@@ -1,38 +1,44 @@
 [package]
 name = "tomat"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.92"
 license = "MIT"
-description = "A plain pomodoro timer that draws a small block under your shell prompt"
+publish = false
+description = "Three focus/break slots and a glass timer that stays on screen"
 readme = "README.md"
-keywords = ["pomodoro", "timer", "tui", "terminal", "focus"]
-categories = ["command-line-utilities"]
+keywords = ["pomodoro", "timer", "focus", "wayland"]
 
 [dependencies]
 ab_glyph = { version = "0.2.32", default-features = false, features = ["std"] }
 anyhow = "1.0.104"
-chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 dirs = "7.0.0"
-lexopt = "0.3.2"
-# Only the crossterm backend: the default features add a calendar widget,
-# macros and a layout cache that tomat doesn't use.
-ratatui = { version = "0.30", default-features = false, features = ["crossterm"] }
-rustix = { version = "1.1", features = ["event", "fs"] }
+rustix = { version = "1.1", features = ["event", "fs", "process"] }
 signal-hook = "0.3"
 wayland-client = "0.31.15"
 wayland-protocols = { version = "0.32.13", features = ["client", "staging", "unstable"] }
 wayland-protocols-wlr = { version = "0.3.12", features = ["client"] }
 
-[lints.rust]
+[dev-dependencies]
+lexopt = "0.3.2"
+
+[lints]
+workspace = true
+
+# The app and the window are two programs: the app stays, so it carries no toolkit.
+[workspace]
+members = ["window"]
+default-members = [".", "window"]
+resolver = "3"
+
+[workspace.lints.rust]
 unsafe_code = "forbid"
 
-[lints.clippy]
+[workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 unwrap_used = "warn"
 
-# Small over fast: a timer has nothing to compute, and less code means less
-# memory. Measured choices are in docs/decisions.md.
+# Small over fast: a timer has nothing to compute.
 [profile.release]
 opt-level = "s"
 lto = true

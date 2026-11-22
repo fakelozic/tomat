@@ -1,61 +1,63 @@
 # tomat
 
-A plain pomodoro timer for the terminal: focus, break, focus, break. It draws a small block under your prompt, uses your terminal's own background, and runs in under 1 MiB of memory. *Tomat* is "tomato" in Danish, Norwegian and Swedish.
+Three focus/break slots, and a timer that stays on screen. Nothing more: no tracking, no counts, no history. *Tomat* is "tomato" in Danish, Norwegian and Swedish.
 
-![tomat during a 30-minute focus: a big clock, the FOCUS chip with its end time, today's sessions as dots, and the progress bar with sparkles at its front](docs/images/focus.gif)
+![The three slots](docs/images/slots.png) ![The running timer](docs/images/running.png)
 
-The progress bar is a solid streak with a layer of sparkles at its front, drifting while the timer runs. Orange means focus, aqua means a break, and yellow means paused. The orange dots count today's finished focus sessions.
+![The glass timer over some code](docs/images/glass.png)
 
-![tomat's menu: the 30-minute preset on the clock, with the 15/5, 30/5 and 60/10 presets below](docs/images/menu.png)
+## Use
+
+1. Open **tomat**, fill a slot and press play. The window closes.
+2. A small piece of frosted glass shows the time over everything, fullscreen apps too. Clicks pass through it. Orange is focus, green is a break, yellow is paused.
+3. Open tomat again to pause or stop. While it is open you can also drag the glass.
+
+Focus and break alternate until you press Stop. The glass follows KDE between dark and light.
+
+| Key, in the window | Does |
+|---|---|
+| `Tab` | Next field or button |
+| `Enter` in a field | Start that slot |
+| `Space` | Pause or resume |
+| `Esc` | Close the window (the timer keeps going) |
+
+## Needs
+
+KDE Plasma 6 on Wayland is what it's built and tested for. The glass needs the layer-shell protocol, which GNOME doesn't have. The frost needs KWin's Blur effect: without it the glass is nearly solid.
 
 ## Install
 
 ```sh
-mise run install          # static musl build, under 1 MiB of RAM
-mise run install-glibc    # the usual dynamic build (about 2.6 MiB RSS)
+mise run install              # for you only: menu entry, icon, ~/.local/bin/tomat
+scripts/install.sh --uninstall
 ```
 
-[mise](https://mise.jdx.dev) installs the pinned Rust toolchain (1.99.1, with the musl target) on first use. Without mise, rustup does the same from `rust-toolchain.toml`, and plain `cargo install --locked --path .` works too (Rust 1.88 or newer). Desktop notifications use `notify-send` (libnotify, included with GNOME and most Linux desktops); without it, only the terminal bell rings.
+[mise](https://mise.jdx.dev) installs the pinned Rust on first use.
 
-## Use
+## What it saves
 
-```sh
-tomat                  # menu: 15/5, 30/5 or 60/10
-tomat -w 45 -b 10      # start 45 min focus / 10 min break right away
-tomat --auto           # start each next phase without waiting for Enter
-tomat --help
-```
+Only on your PC: the three slots, where you put the glass, the running timer until you press Stop (so a crash doesn't lose it), and 7 days of logs of what went wrong. The logs never say when a timer started, finished or how long it was. See [docs/data.md](docs/data.md).
 
-The keys stay hidden until you press `i` (the chip at the end of the presets or progress row):
-
-| Key | Does |
-|---|---|
-| `h` `l` / `←` `→`, `enter`, `1`-`9` | Pick a preset in the menu (`j` `k` work too) |
-| `space` / `p` | Pause or resume |
-| `enter` | Start the next phase when it is waiting |
-| `s` | Skip to the next phase (a skipped focus is not counted) |
-| `r` | Restart the current phase |
-| `m` / `esc` | Back to the menu |
-| `i` / `?` | Show or hide the keys |
-| `q` / `ctrl-c` | Quit (the block disappears and leaves your prompt clean) |
-
-Each finished focus session is added to `~/.local/share/tomat/log.csv`. See [docs/data.md](docs/data.md).
+It uses about 1 MB of RAM while a timer runs. The window adds about 17 MB, only while it is open.
 
 ## Develop
 
 ```sh
-mise run check    # fmt check, clippy (pedantic, warnings are errors), tests
-mise run run      # 3-second phases, kept out of your real history
-mise tasks        # list every task
+mise run check    # format, lints (pedantic), tests
+mise run build    # both programs
+mise run glass    # preview the glass alone
 ```
 
-The code is in three parts: `src/pomodoro/` (pure logic), `src/tui/` (the terminal) and `src/system/` (notifications, history), wired together in `src/main.rs`.
-
 - [docs/architecture.md](docs/architecture.md): how the parts fit together
-- [docs/codebase-map.md](docs/codebase-map.md): what each file does, and where to change things
-- [docs/decisions.md](docs/decisions.md): why it's built this way, with the memory measurements
-- [docs/data.md](docs/data.md): the history file
+- [docs/codebase-map.md](docs/codebase-map.md): what each file does
+- [docs/decisions.md](docs/decisions.md): why it's built this way
+- [docs/data.md](docs/data.md): every file it writes
+- [docs/operations.md](docs/operations.md): logs and fixes
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE). The digit font is under the SIL Open Font License ([text](assets/LICENSE-digits.txt)).
+
+The window is built with [Slint](https://slint.dev), used under its Royalty-free Desktop, Mobile, and Web Applications License.
+
+[![Made with Slint](https://raw.githubusercontent.com/slint-ui/slint/master/logo/MadeWithSlint-logo-whitebg.png)](https://slint.dev)

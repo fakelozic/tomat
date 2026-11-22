@@ -1,13 +1,7 @@
 //! Every colour of the glass, in both looks.
 
-use super::Phase;
-
-/// Smoked on a dark desktop, light on a light one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Look {
-    Smoked,
-    Light,
-}
+use crate::theme::Look;
+use crate::timer::Phase;
 
 /// An sRGB colour with an opacity.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -19,10 +13,7 @@ pub(super) struct Colour {
 impl Colour {
     const fn new(hex: u32, alpha: f32) -> Self {
         let [_, r, g, b] = hex.to_be_bytes();
-        Self {
-            rgb: [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0],
-            alpha,
-        }
+        Self { rgb: [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0], alpha }
     }
 }
 

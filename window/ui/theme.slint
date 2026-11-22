@@ -1,0 +1,38 @@
+// Every colour and size of the window. Components hold no raw values.
+
+export global Theme {
+    in property <bool> dark: true;
+
+    out property <color> ground: dark ? #17191a : #faf6e8;
+    out property <color> raised: dark ? #282828 : #eee6cf;
+    out property <color> hover: dark ? #32302f : #e6dcc0;
+    out property <color> text: dark ? #ebdbb2 : #17191a;
+    out property <color> quiet: dark ? #a89984 : #5a5048;
+    out property <color> orange: #fe8019;
+    out property <color> orange-hover: #ff9440;
+    out property <color> green: dark ? #8ec07c : #427b58;
+    out property <color> yellow: dark ? #fabd2f : #b57614;
+    out property <color> ink: #17191a;
+
+    // The typographic family inside assets/digits.ttf. A proportional fallback would jump as it counts.
+    out property <string> digits: "JetBrainsMonoNL Nerd Font";
+    out property <int> bold: 700;
+    out property <int> medium: 600;
+    out property <length> label: 13px;
+    out property <length> small: 12px;
+    out property <length> number: 22px;
+    out property <length> clock: 62px;
+
+    out property <length> width: 300px;
+    out property <length> height: 228px;
+    out property <length> edge: 20px;
+    out property <length> gap: 8px;
+    out property <length> row-gap: 12px;
+    out property <length> control: 48px;
+    out property <length> line: 20px;
+    out property <length> square: 9px;
+    out property <length> square-radius: 1.5px;
+    out property <length> radius: 8px;
+    out property <length> ring: 2px;
+    out property <length> play: 14px;
+}

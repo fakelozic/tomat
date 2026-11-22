@@ -35,32 +35,18 @@ impl Buffers {
         let width = i32::try_from(size.0)?;
         let height = i32::try_from(size.1)?;
         let bytes = width * height * 4;
-        let fd = rustix::fs::memfd_create("tomat-glass", rustix::fs::MemfdFlags::CLOEXEC)
-            .context("no shared memory")?;
+        let fd =
+            rustix::fs::memfd_create("tomat-glass", rustix::fs::MemfdFlags::CLOEXEC).context("no shared memory")?;
         let file = File::from(fd);
         file.set_len(u64::try_from(bytes * 2)?)?;
         let pool = shm.create_pool(file.as_fd(), bytes * 2, handle, ());
         let pair = [0, 1].map(|index: usize| {
             let offset = if index == 0 { 0 } else { bytes };
             let slot = Slot { generation, index };
-            pool.create_buffer(
-                offset,
-                width,
-                height,
-                width * 4,
-                wl_shm::Format::Argb8888,
-                handle,
-                slot,
-            )
+            pool.create_buffer(offset, width, height, width * 4, wl_shm::Format::Argb8888, handle, slot)
         });
         pool.destroy();
-        Ok(Self {
-            file,
-            pair,
-            busy: [false; 2],
-            size,
-            generation,
-        })
+        Ok(Self { file, pair, busy: [false; 2], size, generation })
     }
 
     pub(super) fn size(&self) -> (usize, usize) {

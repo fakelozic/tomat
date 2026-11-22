@@ -1,10 +1,9 @@
 //! Where the glass sits: snapping, staying on screen, and remembering it.
 
-use std::io::{Read, Write};
-use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::path::Path;
 
 use super::shape::{HEIGHT, WIDTH};
+use crate::private_file;
 
 /// The gap it keeps from an edge it snapped to, and its gap from the top at first.
 pub(super) const GAP: i32 = 12;
@@ -50,17 +49,10 @@ impl Spot {
     pub(super) fn new(point: Pair, screen: Pair, monitor: &str) -> Self {
         let part = |at: i32, room: i32| (f64::from(at) / f64::from(room.max(1))).clamp(0.0, 1.0);
         let room = room(screen);
-        Self {
-            x: part(point.0, room.0),
-            y: part(point.1, room.1),
-            monitor: monitor.to_owned(),
-        }
+        Self { x: part(point.0, room.0), y: part(point.1, room.1), monitor: monitor.to_owned() }
     }
 
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "a fraction of an i32 fits in one"
-    )]
+    #[expect(clippy::cast_possible_truncation, reason = "a fraction of an i32 fits in one")]
     pub(super) fn point(&self, screen: Pair) -> Pair {
         let at = |part: f64, room: i32| (part * f64::from(room)).round() as i32;
         let room = room(screen);
@@ -69,53 +61,20 @@ impl Spot {
 
     fn parse(text: &str) -> Option<Self> {
         let mut words = text.lines().next()?.splitn(3, ' ');
-        let mut part = || {
-            words
-                .next()?
-                .parse::<f64>()
-                .ok()
-                .filter(|n| (0.0..=1.0).contains(n))
-        };
+        let mut part = || words.next()?.parse::<f64>().ok().filter(|n| (0.0..=1.0).contains(n));
         let (x, y) = (part()?, part()?);
-        Some(Self {
-            x,
-            y,
-            monitor: words.next().unwrap_or_default().to_owned(),
-        })
+        Some(Self { x, y, monitor: words.next().unwrap_or_default().to_owned() })
     }
 
     /// Reads the saved place. A bad or missing file means top centre.
     pub(super) fn load(path: &Path) -> Option<Self> {
-        if !std::fs::metadata(path).ok()?.is_file() {
-            return None;
-        }
-        let mut text = String::new();
-        std::fs::File::open(path)
-            .ok()?
-            .take(256)
-            .read_to_string(&mut text)
-            .ok()?;
-        Self::parse(&text)
+        let bytes = private_file::read(path, 256).ok()?;
+        Self::parse(std::str::from_utf8(&bytes).ok()?)
     }
 
     /// Saves the place, readable only by its owner. A crash midway leaves the old one.
     pub(super) fn save(&self, path: &Path) -> std::io::Result<()> {
-        if let Some(folder) = path.parent() {
-            std::fs::DirBuilder::new()
-                .recursive(true)
-                .mode(0o700)
-                .create(folder)?;
-        }
-        let draft = path.with_extension("new");
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o600)
-            .open(&draft)?;
-        writeln!(file, "{} {} {}", self.x, self.y, self.monitor)?;
-        file.sync_all()?;
-        std::fs::rename(&draft, path)
+        private_file::replace(path, format!("{} {} {}\n", self.x, self.y, self.monitor).as_bytes())
     }
 }
 

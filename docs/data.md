@@ -1,25 +1,17 @@
 # Data
 
-## History: `$XDG_DATA_HOME/tomat/log.csv`
-Usually `~/.local/share/tomat/log.csv`. It is created when the first focus session finishes. The code is `src/system/history.rs`.
+Everything is owner-only and stays on the PC. There is no history and no count.
 
-One line per finished focus session (skipped ones are not written):
+| File | What | Lives |
+|---|---|---|
+| `$XDG_STATE_HOME/tomat/slots` | `15/5 30/5 60/10`: focus/break minutes of the three slots | Until edited |
+| `$XDG_STATE_HOME/tomat/glass-position` | `X Y MONITOR`: fractions of the room it has to move in, so it holds when the resolution changes | Until dragged again |
+| `$XDG_STATE_HOME/tomat/logs/tomat-YYYY-MM-DD.log` | What went wrong, and the window opening and closing | 7 days, 2 MB a day at most |
+| `$XDG_RUNTIME_DIR/tomat/timer` | `SLOT DONE_MS SEEN_MS running\|paused`: lets a crash resume the timer | Erased on Stop and at logout |
+| `$XDG_RUNTIME_DIR/tomat/lock`, `door` | Single instance | While running |
 
-```
-2026-10-25T12:42:13+05:30,1800
-```
+`$XDG_STATE_HOME` is usually `~/.local/state`. Files are read with a size limit and without following a pipe, and replaced atomically. A bad file means the default.
 
-| Field | Meaning |
-|---|---|
-| 1 | When the session finished: RFC 3339 local time, with its UTC offset |
-| 2 | Focus length in whole seconds |
+A running timer that was gone for over two whole rounds isn't resumed. A paused one is.
 
-- **Append only.** tomat never rewrites or deletes lines. Each line is written in one call, so two running copies can't mix up each other's lines.
-- **Reading:** only at startup, line by line (memory stays flat however long the file gets), to count today's sessions. Lines that don't parse are skipped.
-- **Retention:** none. The file grows by about 32 bytes per session (about 300 KB after 10,000 sessions). Delete or trim it by hand whenever you like.
-- **Known limit:** the "today" count doesn't reset at midnight while tomat stays open. It's correct again on the next start.
-
-## Glass position: `$XDG_STATE_HOME/tomat/glass-position`
-Usually `~/.local/state/tomat/glass-position`. It is written only when the glass is dragged. The code is `src/glass/place.rs`.
-
-One line: `X Y MONITOR`, where X and Y are fractions (0 to 1) of the room the glass has to move in, so the place holds when the resolution changes. Owner-only, replaced atomically. A bad or missing file means top centre.
+tomat 0.1 kept a history in `~/.local/share/tomat/log.csv`. 0.2 never reads or writes it, and doesn't delete it.

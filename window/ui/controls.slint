@@ -1,0 +1,190 @@
+// The window's few pieces.
+
+import { Theme } from "theme.slint";
+
+export global Format {
+    pure callback digits(string) -> string;
+    pure callback valid(string) -> bool;
+}
+
+export component Legend inherits Rectangle {
+    in property <string> text;
+    in property <color> colour;
+    in property <color> text-colour: Theme.quiet;
+    height: Theme.line;
+
+    Rectangle {
+        x: 0;
+        y: (parent.height - self.height) / 2;
+        width: Theme.square;
+        height: Theme.square;
+        border-radius: Theme.square-radius;
+        background: root.colour;
+    }
+    Text {
+        x: Theme.square + Theme.gap;
+        height: parent.height;
+        text: root.text;
+        color: root.text-colour;
+        font-size: Theme.label;
+        vertical-alignment: center;
+    }
+}
+
+export component Button inherits Rectangle {
+    in property <string> text;
+    in property <string> label: root.text;
+    in property <bool> main;
+    in property <bool> play;
+    in property <bool> enabled: true;
+    callback clicked();
+
+    height: Theme.control;
+    border-radius: Theme.radius;
+    background: root.main
+        ? (touch.has-hover && root.enabled ? Theme.orange-hover : Theme.orange)
+        : (touch.has-hover ? Theme.hover : Theme.raised);
+    opacity: root.enabled ? 1 : 0.4;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if root.enabled { root.clicked(); } }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+    keys := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if event.text == Key.Return || event.text == Key.Space {
+                if !event.repeat { root.clicked(); }
+                return accept;
+            }
+            return reject;
+        }
+    }
+    Rectangle {
+        border-radius: parent.border-radius;
+        border-width: keys.has-focus ? Theme.ring : 0;
+        border-color: Theme.text;
+    }
+    if root.play: Path {
+        x: (root.width - self.width) / 2 + 1px;
+        y: (root.height - self.height) / 2;
+        width: Theme.play;
+        height: Theme.play;
+        viewbox-width: 14;
+        viewbox-height: 14;
+        fill: Theme.ink;
+        commands: "M 2 0 L 13 7 L 2 14 Z";
+    }
+    if !root.play: Text {
+        text: root.text;
+        color: root.main ? Theme.ink : Theme.text;
+        font-size: Theme.label;
+        font-weight: Theme.medium;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+export component Minutes inherits Rectangle {
+    in-out property <string> value;
+    in property <string> label;
+    callback edited();
+    callback entered();
+
+    function fill() {
+        input.focus();
+        input.select-all();
+    }
+
+    height: Theme.control;
+    border-radius: Theme.radius;
+    background: area.has-hover ? Theme.hover : Theme.raised;
+    border-width: input.has-focus ? Theme.ring : 0;
+    border-color: Theme.orange;
+
+    input := TextInput {
+        x: 10px;
+        width: parent.width - 48px;
+        height: parent.height;
+        text <=> root.value;
+        input-type: number;
+        single-line: true;
+        color: Theme.text;
+        selection-background-color: Theme.orange;
+        selection-foreground-color: Theme.ink;
+        font-family: Theme.digits;
+        font-size: Theme.number;
+        font-weight: Theme.bold;
+        vertical-alignment: center;
+        accessible-label: root.label;
+        edited => {
+            self.text = Format.digits(self.text);
+            root.edited();
+        }
+        accepted => { root.entered(); }
+        changed has-focus => {
+            if self.has-focus { self.select-all(); }
+        }
+    }
+    Text {
+        x: parent.width - 34px;
+        width: 26px;
+        height: parent.height;
+        text: "min";
+        color: Theme.quiet;
+        font-size: Theme.small;
+        vertical-alignment: center;
+    }
+    // One click fills it: the number is selected, so typing replaces it.
+    area := TouchArea {
+        mouse-cursor: text;
+        clicked => { root.fill(); }
+    }
+}
+
+export component SlotRow inherits Rectangle {
+    in property <string> name;
+    in-out property <string> focus-value;
+    in-out property <string> break-value;
+    callback edited();
+    callback start();
+
+    property <bool> ready: Format.valid(root.focus-value) && Format.valid(root.break-value);
+    property <length> field: (root.width - Theme.control - 2 * Theme.gap) / 2;
+    height: Theme.control;
+
+    Minutes {
+        x: 0;
+        y: 0;
+        width: root.field;
+        value <=> root.focus-value;
+        label: "Focus minutes, slot " + root.name;
+        edited => { root.edited(); }
+        entered => { if root.ready { root.start(); } }
+    }
+    Minutes {
+        x: root.field + Theme.gap;
+        y: 0;
+        width: root.field;
+        value <=> root.break-value;
+        label: "Break minutes, slot " + root.name;
+        edited => { root.edited(); }
+        entered => { if root.ready { root.start(); } }
+    }
+    Button {
+        x: root.width - self.width;
+        y: 0;
+        width: Theme.control;
+        main: true;
+        play: true;
+        label: "Start slot " + root.name;
+        enabled: root.ready;
+        clicked => { root.start(); }
+    }
+}

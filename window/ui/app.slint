@@ -1,0 +1,161 @@
+// tomat's one window: three slots, or the running timer. Both are the same size, so nothing jumps.
+
+import "../../assets/digits.ttf";
+import { Theme } from "theme.slint";
+import { Button, Format, Legend, SlotRow } from "controls.slint";
+
+export { Format, Theme }
+
+export component AppWindow inherits Window {
+    title: "tomat";
+    width: Theme.width;
+    height: Theme.height;
+    background: Theme.ground;
+
+    in property <bool> running;
+    in property <bool> paused;
+    in property <bool> resting;
+    in property <string> clock;
+    in property <string> next;
+
+    in-out property <string> focus-1;
+    in-out property <string> break-1;
+    in-out property <string> focus-2;
+    in-out property <string> break-2;
+    in-out property <string> focus-3;
+    in-out property <string> break-3;
+
+    callback edited();
+    callback start(int);
+    callback set-paused(bool);
+    callback stop();
+    callback dismiss();
+
+    property <length> inner: root.width - 2 * Theme.edge;
+    property <length> field: (root.inner - Theme.control - 2 * Theme.gap) / 2;
+    property <length> first-row: Theme.row-gap + Theme.line + Theme.gap;
+
+    forward-focus: keys;
+    changed running => { keys.focus(); }
+
+    keys := FocusScope {
+        focus-on-click: true;
+        focus-on-tab-navigation: false;
+        key-pressed(event) => {
+            if event.text == Key.Escape {
+                root.dismiss();
+                return accept;
+            }
+            if root.running && event.text == Key.Space && !event.repeat {
+                root.set-paused(!root.paused);
+                return accept;
+            }
+            return reject;
+        }
+
+        if !root.running: Rectangle {
+            x: Theme.edge;
+            width: root.inner;
+            height: root.height;
+
+            Legend {
+                x: 0;
+                y: Theme.row-gap;
+                width: root.field;
+                text: "Focus";
+                colour: Theme.orange;
+            }
+            Legend {
+                x: root.field + Theme.gap;
+                y: Theme.row-gap;
+                width: root.field;
+                text: "Break";
+                colour: Theme.green;
+            }
+            SlotRow {
+                x: 0;
+                y: root.first-row;
+                width: root.inner;
+                name: "1";
+                focus-value <=> root.focus-1;
+                break-value <=> root.break-1;
+                edited => { root.edited(); }
+                start => { root.start(0); }
+            }
+            SlotRow {
+                x: 0;
+                y: root.first-row + Theme.control + Theme.row-gap;
+                width: root.inner;
+                name: "2";
+                focus-value <=> root.focus-2;
+                break-value <=> root.break-2;
+                edited => { root.edited(); }
+                start => { root.start(1); }
+            }
+            SlotRow {
+                x: 0;
+                y: root.first-row + 2 * (Theme.control + Theme.row-gap);
+                width: root.inner;
+                name: "3";
+                focus-value <=> root.focus-3;
+                break-value <=> root.break-3;
+                edited => { root.edited(); }
+                start => { root.start(2); }
+            }
+        }
+
+        if root.running: Rectangle {
+            x: Theme.edge;
+            width: root.inner;
+            height: root.height;
+
+            Legend {
+                x: 0;
+                y: Theme.edge;
+                width: root.field;
+                text: root.paused ? "Paused" : root.resting ? "Break" : "Focus";
+                text-colour: Theme.text;
+                colour: root.paused ? Theme.yellow : root.resting ? Theme.green : Theme.orange;
+            }
+            Text {
+                x: 0;
+                y: Theme.edge;
+                width: parent.width;
+                height: Theme.line;
+                text: root.next;
+                color: Theme.quiet;
+                font-size: Theme.label;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+            }
+            Text {
+                x: 0;
+                y: Theme.edge + Theme.line;
+                width: parent.width;
+                height: parent.height - 2 * Theme.edge - Theme.line - Theme.control;
+                text: root.clock;
+                color: Theme.text;
+                font-family: Theme.digits;
+                font-size: Theme.clock;
+                font-weight: Theme.bold;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            Button {
+                x: 0;
+                y: parent.height - Theme.edge - self.height;
+                width: (parent.width - Theme.gap) / 2;
+                main: true;
+                text: root.paused ? "Resume" : "Pause";
+                clicked => { root.set-paused(!root.paused); }
+            }
+            Button {
+                x: parent.width - self.width;
+                y: parent.height - Theme.edge - self.height;
+                width: (parent.width - Theme.gap) / 2;
+                text: "Stop";
+                clicked => { root.stop(); }
+            }
+        }
+    }
+}

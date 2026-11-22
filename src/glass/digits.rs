@@ -12,10 +12,7 @@ const LINE_PER_EM: f32 = 1.32;
 const ADVANCE_PER_EM: f32 = 0.6;
 
 /// How wide `text` is, in logical pixels.
-#[expect(
-    clippy::cast_precision_loss,
-    reason = "the time is a handful of characters"
-)]
+#[expect(clippy::cast_precision_loss, reason = "the time is a handful of characters")]
 pub(super) fn width(text: &str) -> f32 {
     text.len() as f32 * SIZE * ADVANCE_PER_EM
 }
@@ -26,30 +23,19 @@ pub(super) fn width(text: &str) -> f32 {
     clippy::cast_precision_loss,
     reason = "pixel positions inside a tiny bitmap"
 )]
-pub(super) fn draw(
-    mask: &mut [f32],
-    size: (usize, usize),
-    text: &str,
-    at: (f32, f32),
-    scale: f32,
-) -> Result<()> {
+pub(super) fn draw(mask: &mut [f32], size: (usize, usize), text: &str, at: (f32, f32), scale: f32) -> Result<()> {
     let font = FontRef::try_from_slice(FONT).context("the bundled font is broken")?;
     let em = SIZE * scale;
     for (index, letter) in text.chars().enumerate() {
         let place = point(at.0 + index as f32 * em * ADVANCE_PER_EM, at.1);
-        let glyph = font
-            .glyph_id(letter)
-            .with_scale_and_position(PxScale::from(em * LINE_PER_EM), place);
+        let glyph = font.glyph_id(letter).with_scale_and_position(PxScale::from(em * LINE_PER_EM), place);
         let Some(outline) = font.outline_glyph(glyph) else {
             continue;
         };
         let corner = outline.px_bounds().min;
         let (left, top) = (corner.x as i64, corner.y as i64);
         outline.draw(|x, y, covered| {
-            let (Ok(x), Ok(y)) = (
-                usize::try_from(left + i64::from(x)),
-                usize::try_from(top + i64::from(y)),
-            ) else {
+            let (Ok(x), Ok(y)) = (usize::try_from(left + i64::from(x)), usize::try_from(top + i64::from(y))) else {
                 return;
             };
             if x < size.0 && y < size.1 {
