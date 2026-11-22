@@ -18,3 +18,8 @@ One line per finished focus session (skipped ones are not written):
 - **Reading:** only at startup, line by line (memory stays flat however long the file gets), to count today's sessions. Lines that don't parse are skipped.
 - **Retention:** none. The file grows by about 32 bytes per session (about 300 KB after 10,000 sessions). Delete or trim it by hand whenever you like.
 - **Known limit:** the "today" count doesn't reset at midnight while tomat stays open. It's correct again on the next start.
+
+## Glass position: `$XDG_STATE_HOME/tomat/glass-position`
+Usually `~/.local/state/tomat/glass-position`. It is written only when the glass is dragged. The code is `src/glass/place.rs`.
+
+One line: `X Y MONITOR`, where X and Y are fractions (0 to 1) of the room the glass has to move in, so the place holds when the resolution changes. Owner-only, replaced atomically. A bad or missing file means top centre.

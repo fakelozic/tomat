@@ -1,5 +1,7 @@
 # tomat: notes for AI agents
 
+**tomat is becoming a small desktop app:** three focus/break slots and a glass timer, with no TUI and no session tracking (`docs/decisions.md`, 2026-11-23). The glass is built (`src/glass/`). The TUI below stays until the app replaces it: don't add features to it. If a `PLAN.md` exists, read it first.
+
 A ratatui pomodoro TUI drawn inline under the shell prompt. Read `docs/architecture.md` and `docs/codebase-map.md` first.
 
 ## Commands
@@ -15,6 +17,7 @@ A ratatui pomodoro TUI drawn inline under the shell prompt. Read `docs/architect
 - `src/tui/`: keys in, frames out. Never changes app state.
 - `src/system/`: notifications and the history file. Never decides anything.
 - `src/main.rs`, `src/cli.rs`: wiring only.
+- `src/lib.rs`, `src/glass/`: the Wayland glass. `paint`, `shape` and `palette` do no I/O. Its colors live only in `glass/palette.rs`.
 
 ## Rules
 - Colors are defined only in `tui/theme.rs`.
@@ -31,6 +34,11 @@ A ratatui pomodoro TUI drawn inline under the shell prompt. Read `docs/architect
 - The history file is append-only. Don't rewrite or truncate the user's file.
 
 ## Traps
+- The glass's layer-shell scope must stay `"dock"`: with any other, Show Desktop hides it. Its layer must stay Overlay: Top goes under fullscreen apps.
+- The glass is moved by a second, invisible surface that never moves (`glass/surface.rs`). Don't read drag positions from the moving surface: they shift under the cursor.
+- Keep the outline around smoked text: blur hides what's behind but doesn't darken it, so cream on a white page needs it.
+- `kdeglobals` is replaced by a rename: watch its folder, not the file.
+- No timer starts, finishes or lengths in any log or file of the app. That would be tracking.
 - `"pause "` in the hints has a trailing space on purpose: it keeps the hints from shifting when the label becomes `resume`.
 - The clock rounds seconds *up* (`tui/widgets.rs::clock_text`), so a fresh timer reads `30:00`, not `29:59`.
 - The digit font (`tui/digits.rs`) mixes `█` with `▀`/`▄` on purpose: a cell is twice as tall as wide, so a full-width column and a half-height row are the same stroke thickness.

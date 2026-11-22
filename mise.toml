@@ -29,6 +29,10 @@ description = "Try it with 3-second phases, kept out of your real history"
 env = { XDG_DATA_HOME = "{{config_root}}/target/dev-data" }
 run = "cargo run -- -w 0.05 -b 0.05 --no-notify"
 
+[tasks.glass]
+description = "Preview the glass: draggable for 30 seconds, then click-through, gone after 10 minutes (Ctrl-C stops it)"
+run = "cargo run --release --locked --target x86_64-unknown-linux-musl --example glass-preview"
+
 [tasks.install]
 description = "Install the static musl build: under 1 MiB of RAM"
 run = "cargo install --locked --path . --target x86_64-unknown-linux-musl"

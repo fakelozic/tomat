@@ -21,6 +21,19 @@ tomat is one small binary with three areas, plus the wiring that connects them:
 
 Dependencies point one way: `tui` and `system` use `pomodoro`; `pomodoro` uses neither.
 
+## The glass (`src/glass/`, library)
+The graphical timer that replaces the TUI. It is built, and tried with `mise run glass`, but not wired to the timer yet.
+
+```
+ caller ─Showing─► Glass ─► surface::State ─Face─► paint ─► two shm buffers ─► KWin (blurs behind)
+                     │            ▲
+ kdeglobals ─inotify─┘            └── protocols: monitors, scale, blur on/off, pointer
+```
+
+- `Glass::wait` is the only loop: it sleeps until the display, the colour file or the caller's timeout wakes it.
+- The surface is redrawn only when its `Face` changes: second, phase, look, blur, scale or movable.
+- The caller decides what time to show and whether it can be moved. The glass decides where it sits and saves that.
+
 ## The loop (`main.rs::event_loop`)
 1. Draw the frame from the current `App`.
 2. Sleep until something on screen will change, or a key arrives. While a phase runs, that is the next clock second or the next 200 ms animation step, whichever comes first (`App::next_change`). Otherwise it is one second, so a stop signal is noticed and finished `notify-send` processes are collected.

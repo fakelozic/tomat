@@ -2,6 +2,19 @@
 
 Newest first.
 
+## 2026-11-23: A desktop app with a glass timer, and no TUI
+- **Decision:** tomat becomes three editable focus/break slots and a small frosted timer above every window. The TUI, the history, the session count, the popups and the bell go when the app replaces it.
+- **Why:** a timer inside a terminal is out of sight as soon as another window covers it. And nothing about past sessions is wanted: no tracking.
+- **The glass** (built first):
+  - wlr-layer-shell, Overlay layer, scope `dock`: above fullscreen apps and kept during Show Desktop.
+  - An empty input region and no keyboard interest: clicks pass through and it never takes focus.
+  - `ext-background-effect-v1` for the blur. Without blur the body turns nearly solid.
+  - Smoked on a dark KDE, light on a light one, live, through inotify on `kdeglobals` (no D-Bus client).
+  - Painted in software into two small shared-memory buffers, once a second at most.
+- **Moving:** KWin can't drag layer surfaces. While movable, an invisible catcher over the monitor (one stretched pixel) takes clicks only where the glass is, and the glass follows the pointer.
+- **Measured:** the static preview uses under 1 MiB RSS, dragging included, and about 0.2% of a core.
+- **Rejected:** a terminal with a window rule (blocks clicks, fades the text, takes focus), a panel widget (hidden by fullscreen apps), Qt or GTK for the glass (many times the memory).
+
 ## 2026-10-25: Hardening after a full code review
 - **Decision:** a review of all of `src/` found 31 issues (3 reproduced). All are fixed except one, noted below.
   - **Time is wall-clock (`SystemTime`), not `Instant`.** A monotonic clock stops while the laptop is suspended, so a break would end late.
