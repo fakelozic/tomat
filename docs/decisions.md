@@ -2,6 +2,10 @@
 
 Newest first.
 
+## 2026-11-23: The app icon is the whole tomato
+- **Decision:** an orange disc filling the standard icon size (83% of the canvas), with its leaves.
+- **Why:** the small tomato on a dark disc vanished on a dark panel and looked half the size of the icons beside it.
+
 ## 2026-11-23: Less curve and a quieter edge on the glass
 - **Decision:** corner radius 9 px (was 12). The edge is 1 px at about a quarter opacity (was 1.3 px at 40%).
 - **Why:** the glass should be noticed for its time, not its outline. The thin edge stays, because it covers the blur's stepped corners.
