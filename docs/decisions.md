@@ -2,6 +2,10 @@
 
 Newest first.
 
+## 2026-11-23: The glass is only a square and the time
+- **Decision:** no progress bar on the glass. The square alone carries the state: orange focus, green break, yellow paused.
+- **Why:** the bar was too much for something that is always on screen.
+
 ## 2026-11-23: A desktop app with a glass timer, and no TUI
 - **Decision:** tomat becomes three editable focus/break slots and a small frosted timer above every window. The TUI, the history, the session count, the popups and the bell go when the app replaces it.
 - **Why:** a timer inside a terminal is out of sight as soon as another window covers it. And nothing about past sessions is wanted: no tracking.

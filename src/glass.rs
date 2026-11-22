@@ -45,8 +45,6 @@ pub struct Showing {
     pub paused: bool,
     /// The time left, shown rounded up to the second.
     pub left: Duration,
-    /// How much of the phase is done, from 0 to 1.
-    pub progress: f32,
 }
 
 /// The glass on screen. Dropping it takes it off the screen.

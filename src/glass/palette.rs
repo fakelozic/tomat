@@ -33,7 +33,6 @@ pub(super) struct Palette {
     pub text: Colour,
     /// The thin dark line around smoked text, which keeps it readable on a white page.
     pub outline: Option<Colour>,
-    pub track: Colour,
     pub border: Colour,
     pub border_width: f32,
     pub accent: Colour,
@@ -63,7 +62,6 @@ pub(super) fn palette(
             body: Colour::new(INK, if frosted { 0.50 } else { 0.88 }),
             text: Colour::new(CREAM, 1.0),
             outline: Some(Colour::new(INK, 1.0)),
-            track: Colour::new(0x0092_8374, 0.45),
             border: Colour::new(CREAM, 0.40),
             border_width: 1.3,
             accent: Colour::new(accent, 1.0),
@@ -72,7 +70,6 @@ pub(super) fn palette(
             body: Colour::new(0x00fb_f1c7, if frosted { 0.45 } else { 0.88 }),
             text: Colour::new(INK, 1.0),
             outline: None,
-            track: Colour::new(0x0092_8374, 0.45),
             border: Colour::new(0x00ff_ffff, 0.40),
             border_width: 1.3,
             accent: Colour::new(accent, 1.0),

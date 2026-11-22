@@ -8,11 +8,11 @@ use super::palette::{Colour, Look, palette};
 use super::shape::{self, HEIGHT, RADIUS, WIDTH};
 use super::{Phase, Showing, digits};
 
-const BAR: f32 = 5.0;
 const SQUARE: f32 = 9.0;
-const SQUARE_TOP: f32 = 15.0;
+const SQUARE_TOP: f32 = 16.5;
 const SPACE: f32 = 11.0;
-const BASELINE: f32 = 27.0;
+/// Puts the middle of the digits on the middle of the glass.
+const BASELINE: f32 = 28.3;
 /// Wayland's scales count in 120ths.
 pub(super) const SCALE_ONE: u32 = 120;
 
@@ -22,8 +22,6 @@ pub(super) struct Face {
     phase: Phase,
     paused: bool,
     clock: String,
-    /// The bar's filled length, in device pixels.
-    filled: u16,
     look: Look,
     frosted: bool,
     movable: bool,
@@ -31,12 +29,6 @@ pub(super) struct Face {
 }
 
 impl Face {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        clippy::cast_precision_loss,
-        reason = "the length is clamped to the glass's width first"
-    )]
     pub(super) fn new(
         showing: Showing,
         look: Look,
@@ -44,12 +36,10 @@ impl Face {
         movable: bool,
         scale: u32,
     ) -> Self {
-        let width = size(scale).0 as f32;
         Self {
             phase: showing.phase,
             paused: showing.paused,
             clock: clock(showing.left),
-            filled: (showing.progress.clamp(0.0, 1.0) * width).round() as u16,
             look,
             frosted,
             movable,
@@ -107,7 +97,6 @@ pub(super) fn paint(face: &Face) -> Result<Vec<u8>> {
         .outline
         .map(|colour| (colour, spread(&text, (width, height), scale)));
 
-    let bar_top = high - (BAR * scale).round();
     let square_top = (SQUARE_TOP * scale).round();
     let square_side = (SQUARE * scale).round();
     let mut bytes = Vec::with_capacity(width * height * 4);
@@ -118,14 +107,6 @@ pub(super) fn paint(face: &Face) -> Result<Vec<u8>> {
             let inside = shape::coverage(edge);
             let mut pixel = [0.0; 4];
             over(&mut pixel, colours.body, inside);
-            if py > bar_top {
-                let colour = if px < f32::from(face.filled) {
-                    colours.accent
-                } else {
-                    colours.track
-                };
-                over(&mut pixel, colour, inside);
-            }
             let border = inside - shape::coverage(edge + colours.border_width * scale);
             over(&mut pixel, colours.border, border);
             let square = shape::distance(
@@ -214,7 +195,6 @@ mod tests {
             phase: Phase::Focus,
             paused: false,
             left: Duration::from_secs(left),
-            progress: 0.4,
         };
         Face::new(showing, look, true, false, scale)
     }
@@ -255,6 +235,34 @@ mod tests {
             (45..120).any(|x| (12..27).any(|y| alpha(x, y) == 255)),
             "solid digits"
         );
+    }
+
+    #[test]
+    fn the_square_and_the_time_sit_in_the_middle() {
+        for scale in [120, 150, 180, 240] {
+            let face = face(Look::Light, 1421, scale);
+            let (width, height) = face.size();
+            let bytes = paint(&face).expect("paints");
+            let (edge_x, edge_y) = (width / 12, height / 8);
+            // The square and the digits are solid. The body and border are see-through.
+            let solid: Vec<(usize, usize)> = (edge_y..height - edge_y)
+                .flat_map(|y| (edge_x..width - edge_x).map(move |x| (x, y)))
+                .filter(|&(x, y)| bytes[(y * width + x) * 4 + 3] > 200)
+                .collect();
+            let left = solid.iter().map(|at| at.0).min().expect("ink");
+            let right = solid.iter().map(|at| at.0).max().expect("ink") + 1;
+            let top = solid.iter().map(|at| at.1).min().expect("ink");
+            let bottom = solid.iter().map(|at| at.1).max().expect("ink") + 1;
+            let slack = usize::try_from(scale.div_ceil(120) * 2).expect("small");
+            assert!(
+                (left + right).abs_diff(width) <= slack * 2,
+                "across: {left}..{right}"
+            );
+            assert!(
+                (top + bottom).abs_diff(height) <= slack,
+                "down: {top}..{bottom}"
+            );
+        }
     }
 
     #[test]

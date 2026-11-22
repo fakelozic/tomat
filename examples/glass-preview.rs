@@ -14,10 +14,10 @@ use tomat::glass::{Glass, Phase, Showing};
 /// A pretend round: a focus, its break, then a pause, so every colour gets seen.
 fn pretend(elapsed: Duration) -> Showing {
     let at = elapsed.as_secs() % 50;
-    let (phase, paused, total, start): (_, _, u16, u16) = match at {
-        0..20 => (Phase::Focus, false, 1800, 1421),
-        20..40 => (Phase::Break, false, 300, 252),
-        _ => (Phase::Focus, true, 1800, 1421),
+    let (phase, paused, start): (_, _, u16) = match at {
+        0..20 => (Phase::Focus, false, 1421),
+        20..40 => (Phase::Break, false, 252),
+        _ => (Phase::Focus, true, 1421),
     };
     let left: u16 = if paused {
         start
@@ -28,7 +28,6 @@ fn pretend(elapsed: Duration) -> Showing {
         phase,
         paused,
         left: Duration::from_secs(left.into()),
-        progress: 1.0 - f32::from(left) / f32::from(total),
     }
 }
 
