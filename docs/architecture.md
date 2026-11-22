@@ -31,7 +31,7 @@ The graphical timer that replaces the TUI. It is built, and tried with `mise run
 ```
 
 - `Glass::wait` is the only loop: it sleeps until the display, the colour file or the caller's timeout wakes it.
-- The surface is redrawn only when its `Face` changes: second, phase, look, blur, scale or movable.
+- The surface is redrawn only when its `Face` changes: second, phase, look, blur or scale.
 - The caller decides what time to show and whether it can be moved. The glass decides where it sits and saves that.
 
 ## The loop (`main.rs::event_loop`)

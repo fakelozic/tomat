@@ -1,6 +1,6 @@
 //! Step 1's preview: the glass with a pretend timer, to try on a real screen.
 //!
-//! It can be dragged for the first 30 seconds (orange edge), then clicks pass
+//! It can be dragged for the first 30 seconds, then clicks pass
 //! through it. It takes itself away after 10 minutes, or on Ctrl-C.
 
 use std::sync::Arc;

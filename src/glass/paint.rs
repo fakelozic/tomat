@@ -24,25 +24,17 @@ pub(super) struct Face {
     clock: String,
     look: Look,
     frosted: bool,
-    movable: bool,
     scale: u32,
 }
 
 impl Face {
-    pub(super) fn new(
-        showing: Showing,
-        look: Look,
-        frosted: bool,
-        movable: bool,
-        scale: u32,
-    ) -> Self {
+    pub(super) fn new(showing: Showing, look: Look, frosted: bool, scale: u32) -> Self {
         Self {
             phase: showing.phase,
             paused: showing.paused,
             clock: clock(showing.left),
             look,
             frosted,
-            movable,
             scale,
         }
     }
@@ -76,13 +68,7 @@ fn clock(left: Duration) -> String {
 pub(super) fn paint(face: &Face) -> Result<Vec<u8>> {
     let (width, height) = face.size();
     let scale = face.scale as f32 / SCALE_ONE as f32;
-    let colours = palette(
-        face.look,
-        face.phase,
-        face.paused,
-        face.frosted,
-        face.movable,
-    );
+    let colours = palette(face.look, face.phase, face.paused, face.frosted);
     let (wide, high) = (width as f32, height as f32);
 
     let group = SQUARE + SPACE + digits::width(&face.clock);
@@ -196,7 +182,7 @@ mod tests {
             paused: false,
             left: Duration::from_secs(left),
         };
-        Face::new(showing, look, true, false, scale)
+        Face::new(showing, look, true, scale)
     }
 
     #[test]

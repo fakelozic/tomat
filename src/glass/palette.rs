@@ -43,13 +43,7 @@ const INK: u32 = 0x0017_191a;
 const CREAM: u32 = 0x00eb_dbb2;
 
 /// The colours for a state. Without blur the body is nearly solid, so the time still reads.
-pub(super) fn palette(
-    look: Look,
-    phase: Phase,
-    paused: bool,
-    frosted: bool,
-    movable: bool,
-) -> Palette {
+pub(super) fn palette(look: Look, phase: Phase, paused: bool, frosted: bool) -> Palette {
     let accent = match (look, paused, phase) {
         (Look::Smoked, true, _) => 0x00fa_bd2f,
         (Look::Light, true, _) => 0x00b5_7614,
@@ -57,7 +51,7 @@ pub(super) fn palette(
         (Look::Smoked, false, Phase::Break) => 0x008e_c07c,
         (Look::Light, false, Phase::Break) => 0x0042_7b58,
     };
-    let mut palette = match look {
+    match look {
         Look::Smoked => Palette {
             body: Colour::new(INK, if frosted { 0.50 } else { 0.88 }),
             text: Colour::new(CREAM, 1.0),
@@ -74,11 +68,5 @@ pub(super) fn palette(
             border_width: 1.3,
             accent: Colour::new(accent, 1.0),
         },
-    };
-    if movable {
-        // Lit: it can be dragged now.
-        palette.border = Colour::new(ORANGE, 1.0);
-        palette.border_width = 2.0;
     }
-    palette
 }

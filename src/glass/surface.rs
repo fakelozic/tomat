@@ -326,7 +326,7 @@ impl State {
         self.update_catcher()?;
 
         let point = self.point();
-        let face = Face::new(self.showing, self.look, self.blur, self.movable, self.scale);
+        let face = Face::new(self.showing, self.look, self.blur, self.scale);
         let Some(pill) = self.pill.as_mut() else {
             return Ok(());
         };

@@ -35,6 +35,7 @@ A ratatui pomodoro TUI drawn inline under the shell prompt. Read `docs/architect
 
 ## Traps
 - The glass is only the colored square and the time. No progress bar or other extras (`docs/decisions.md`).
+- The glass never changes its edge to show it is movable: no orange ring. The grab cursor is the cue.
 - The glass's layer-shell scope must stay `"dock"`: with any other, Show Desktop hides it. Its layer must stay Overlay: Top goes under fullscreen apps.
 - The glass is moved by a second, invisible surface that never moves (`glass/surface.rs`). Don't read drag positions from the moving surface: they shift under the cursor.
 - Keep the outline around smoked text: blur hides what's behind but doesn't darken it, so cream on a white page needs it.

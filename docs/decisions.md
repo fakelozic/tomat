@@ -2,6 +2,10 @@
 
 Newest first.
 
+## 2026-11-23: No orange ring while the glass is movable
+- **Decision:** the glass looks the same whether it can be dragged or not. The grab cursor over it is the cue. The thin neutral edge stays.
+- **Why:** an orange ring competes with the square, whose color is the state.
+
 ## 2026-11-23: The glass is only a square and the time
 - **Decision:** no progress bar on the glass. The square alone carries the state: orange focus, green break, yellow paused.
 - **Why:** the bar was too much for something that is always on screen.
