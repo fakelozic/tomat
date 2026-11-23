@@ -1,4 +1,4 @@
-//! The timer: focus, break, focus, break, until it is stopped. Pure: time is passed in.
+//! The timer: one focus, then one break, then it is over. Pure: time is passed in.
 //!
 //! It counts wall-clock time, so a break due at 12:30 ends at 12:30 even if the PC slept.
 //! A clock set backwards counts as no time.
@@ -16,11 +16,22 @@ pub enum Phase {
     Break,
 }
 
+/// What a tick saw.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Tick {
+    /// Nothing changed.
+    Same,
+    /// The focus ended and the break began.
+    Break,
+    /// The break ended, or the whole round passed: the timer is done.
+    Over,
+}
+
 /// A running or paused timer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Timer {
     slot: Slot,
-    /// How far into the round it is. Always less than one whole round.
+    /// How far into the round it is. Less than one whole round until it is over.
     done: Duration,
     /// When `done` was last brought up to date.
     seen: SystemTime,
@@ -42,19 +53,25 @@ impl Timer {
         self.focus() + Duration::from_secs(u64::from(self.slot.rest()) * 60)
     }
 
-    /// Counts the time up to `now`. True if the phase changed.
-    pub fn tick(&mut self, now: SystemTime) -> bool {
+    /// Counts the time up to `now`, and says what changed. Once over, every tick says so.
+    pub fn tick(&mut self, now: SystemTime) -> Tick {
         let before = self.phase();
         let passed = now.duration_since(self.seen).unwrap_or_default();
         self.seen = now;
-        if self.paused {
-            return false;
+        if !self.paused {
+            self.done = self.done.saturating_add(passed).min(self.round());
         }
-        let round = self.round();
-        let total = self.done.saturating_add(passed);
-        // Rounds are whole seconds, so the leftover nanoseconds carry over as they are.
-        self.done = Duration::new(total.as_secs() % round.as_secs(), total.subsec_nanos());
-        self.phase() != before
+        if self.over() {
+            Tick::Over
+        } else if self.phase() != before {
+            Tick::Break
+        } else {
+            Tick::Same
+        }
+    }
+
+    fn over(&self) -> bool {
+        self.done >= self.round()
     }
 
     /// Focus or break.
@@ -73,13 +90,10 @@ impl Timer {
         end.saturating_sub(self.done)
     }
 
-    /// The minutes of the phase after this one.
+    /// The minutes of the break to come, or `None` in the break: after it, the timer stops.
     #[must_use]
-    pub fn next_minutes(&self) -> u16 {
-        match self.phase() {
-            Phase::Focus => self.slot.rest(),
-            Phase::Break => self.slot.focus(),
-        }
+    pub fn next_break(&self) -> Option<u16> {
+        (self.phase() == Phase::Focus).then(|| self.slot.rest())
     }
 
     /// Whether it is paused.
@@ -111,7 +125,7 @@ impl Timer {
         format!("{} {} {} {state}", self.slot, self.done.as_millis(), seen.as_millis())
     }
 
-    /// Brings a saved timer up to `now`. A running one that was gone for over two rounds is let go.
+    /// Brings a saved timer up to `now`. One whose round ended meanwhile is let go, quietly.
     #[must_use]
     pub fn restore(line: &str, now: SystemTime) -> Option<Self> {
         let mut words = line.split_ascii_whitespace();
@@ -124,13 +138,7 @@ impl Timer {
             _ => return None,
         };
         let mut timer = Self { slot, done, seen, paused };
-        let round = timer.round();
-        let gone = now.duration_since(seen).unwrap_or_default();
-        if done >= round || (!paused && gone > round * 2) {
-            return None;
-        }
-        timer.tick(now);
-        Some(timer)
+        (timer.tick(now) != Tick::Over).then_some(timer)
     }
 }
 
@@ -149,21 +157,23 @@ mod tests {
     }
 
     #[test]
-    fn focus_then_break_then_focus_again() {
+    fn one_focus_one_break_then_over() {
         let mut timer = timer();
-        assert_eq!((timer.phase(), timer.left().as_secs()), (Phase::Focus, 1500));
-        assert!(!timer.tick(at(1499)));
-        assert!(timer.tick(at(1500)), "the break starts by itself");
-        assert_eq!((timer.phase(), timer.left().as_secs(), timer.next_minutes()), (Phase::Break, 300, 25));
-        assert!(timer.tick(at(1800)), "and so does the next focus");
-        assert_eq!((timer.phase(), timer.left().as_secs(), timer.next_minutes()), (Phase::Focus, 1500, 5));
+        assert_eq!((timer.phase(), timer.left().as_secs(), timer.next_break()), (Phase::Focus, 1500, Some(5)));
+        assert_eq!(timer.tick(at(1499)), Tick::Same);
+        assert_eq!(timer.tick(at(1500)), Tick::Break, "the break starts by itself");
+        assert_eq!((timer.phase(), timer.left().as_secs(), timer.next_break()), (Phase::Break, 300, None));
+        assert_eq!(timer.tick(at(1799)), Tick::Same);
+        assert_eq!(timer.tick(at(1800)), Tick::Over, "then it stops, with no second focus");
+        assert_eq!(timer.left(), Duration::ZERO);
+        assert_eq!(timer.tick(at(9_000)), Tick::Over, "it stays over");
     }
 
     #[test]
     fn a_pause_stops_it() {
         let mut timer = timer();
         timer.set_paused(true, at(100));
-        assert!(!timer.tick(at(9_000)));
+        assert_eq!(timer.tick(at(9_000)), Tick::Same);
         assert_eq!((timer.left().as_secs(), timer.next_change()), (1400, None));
         timer.set_paused(false, at(9_000));
         timer.tick(at(9_100));
@@ -173,8 +183,17 @@ mod tests {
     #[test]
     fn sleep_counts_and_lands_in_the_right_phase() {
         let mut timer = timer();
-        timer.tick(at(1800 * 40 + 1600));
+        assert_eq!(timer.tick(at(1600)), Tick::Break);
         assert_eq!((timer.phase(), timer.left().as_secs()), (Phase::Break, 200));
+        let mut timer = self::timer();
+        assert_eq!(timer.tick(at(1800 * 40)), Tick::Over, "asleep past the break: over, said once");
+    }
+
+    #[test]
+    fn a_pause_at_the_very_end_still_ends_it() {
+        let mut timer = timer();
+        timer.set_paused(true, at(1800));
+        assert_eq!(timer.tick(at(1801)), Tick::Over);
     }
 
     #[test]
@@ -200,7 +219,8 @@ mod tests {
 
     #[test]
     fn stale_or_broken_saves_are_let_go() {
-        assert_eq!(Timer::restore(&timer().save(), at(3601)), None);
+        assert_eq!(Timer::restore(&timer().save(), at(1800)), None, "its round ended meanwhile");
+        assert!(Timer::restore(&timer().save(), at(1799)).is_some());
         for line in ["", "25/5", "25/5 x 0 running", "25/5 1800000 0 paused", "0/5 1 1 paused", "25/5 1 1 maybe"] {
             assert_eq!(Timer::restore(line, at(0)), None, "{line}");
         }

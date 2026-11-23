@@ -146,11 +146,11 @@ fn show(app: &AppWindow, view: View) {
             app.set_resting(phase == Phase::Break);
             app.set_paused(paused);
             app.set_clock(format!("{:02}:{:02}", seconds / 60, seconds % 60).into());
-            let after = match phase {
-                Phase::Focus => "break",
-                Phase::Break => "focus",
+            let next = match next {
+                Some(minutes) => format!("then {minutes} min break"),
+                None => "then stop".to_owned(),
             };
-            app.set_next(format!("then {next} min {after}").into());
+            app.set_next(next.into());
             app.set_running(true);
         }
     }

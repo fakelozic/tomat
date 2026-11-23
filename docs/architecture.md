@@ -10,6 +10,7 @@ Two programs, so the one that stays is tiny:
       │ host ── timer (pure)                                │
       │   ├──── glass ─► KWin: layer surface + blur         │
       │   ├──── door (unix socket): "show the window"       │
+      │   ├──── cue: pw-play + notify-send, never waited on │
       │   └──── log, saved slots, crash copy of the timer   │
       └───────────────┬─────────────────────────────────────┘
                socketpair, one line per message (link.rs)

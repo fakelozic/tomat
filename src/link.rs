@@ -19,8 +19,8 @@ pub enum View {
         paused: bool,
         /// Seconds left, rounded up.
         seconds: u32,
-        /// The minutes of the phase after this one.
-        next: u16,
+        /// The minutes of the break to come, or `None` in the break: then it stops.
+        next: Option<u16>,
     },
 }
 
@@ -51,6 +51,7 @@ impl View {
                     Phase::Break => "break",
                 };
                 let state = if *paused { "paused" } else { "running" };
+                let next = next.map_or_else(|| "stop".to_owned(), |minutes| minutes.to_string());
                 format!("timer {phase} {state} {seconds} {next}\n")
             }
         }
@@ -75,7 +76,10 @@ impl View {
                     _ => return None,
                 };
                 let seconds = words.next()?.parse().ok()?;
-                let next = words.next()?.parse().ok()?;
+                let next = match words.next()? {
+                    "stop" => None,
+                    minutes => Some(minutes.parse().ok()?),
+                };
                 Some(Self::Running { phase, paused, seconds, next })
             }
             _ => None,
@@ -125,8 +129,9 @@ mod tests {
             assert!(line.len() <= MOST_LINE);
             assert_eq!(Ask::decode(line.trim_end()), Some(ask));
         }
-        let timer = View::Running { phase: Phase::Break, paused: true, seconds: 59_940, next: 999 };
-        for view in [View::Slots(Slots::default()), timer] {
+        let focus = View::Running { phase: Phase::Focus, paused: true, seconds: 59_940, next: Some(999) };
+        let rest = View::Running { phase: Phase::Break, paused: false, seconds: 1, next: None };
+        for view in [View::Slots(Slots::default()), focus, rest] {
             assert_eq!(View::decode(view.encode().trim_end()), Some(view));
         }
         assert_eq!(Ask::decode("start 0/0"), None);

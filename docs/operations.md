@@ -21,6 +21,8 @@ One JSON object a line, UTC. The home folder is written as `~`. **No event may r
 | `glass.blur_off` | Blur was switched off | KDE's Desktop Effects, Blur |
 | `glass.place_not_saved`, `slots.save_failed`, `timer.save_failed` | A write failed | Disk space, permissions |
 | `slots.reset` | Saved slots were unreadable: defaults used | The slots file |
+| `chime.missing` | No sound when a phase ends, said once at start | Install `pipewire-utils` or the Ocean sound theme |
+| `popup.missing` | No popup when a phase ends, said once at start | Install `libnotify` (`notify-send`) |
 | `display.gone` | No display for a minute: saved and left | Normal at logout |
 | `app.failed`, `app.wait_failed` | The app couldn't run | The detail |
 | `process.panic` | A bug | The place in the detail |

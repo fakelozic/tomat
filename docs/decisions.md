@@ -2,6 +2,18 @@
 
 Newest first.
 
+## 2026-11-23: One round, then stop; a popup at each end
+- **Decision:** a focus, then its break, then tomat stops as if Stop was pressed: the glass goes and the crash copy is erased. The user starts the next round when they feel like it. During the break the window says "then stop".
+- **Popups:** "Focus done: N min break" and "Break over: tomat stopped", next to the chime. Sent with `notify-send`, its own process like the chime, so tomat links no D-Bus client. They are transient, so Plasma's notification history keeps no list of rounds. Each stays 2 seconds (the user's choice, for tomat only: Plasma 6.8 uses an app's own time over the global "Hide after").
+- **Asleep through the end:** on waking it is stopped, with one popup. Back after a crash past the end: quietly stopped, no popup.
+- **Helpers get no `LD_LIBRARY_PATH`:** a terminal inside an AppImage (T3 Code's) leaks its libraries, and `notify-send` then fails to start.
+
+## 2026-11-23: A soft chime when a phase ends
+- **Decision:** KDE's short `completion-success` sound plays when a focus ends and when a break ends.
+- **Why:** with no sound, the end of a focus went unnoticed. The silence had been an assumption, not the user's choice.
+- **How:** `pw-play` (or `paplay`) runs as its own process and is reaped later, so tomat links no audio or D-Bus library and never waits.
+- **Never logged:** a failed chime leaves no line, because its time would show when a phase ended. A missing player or sound is logged once, at start.
+
 ## 2026-11-23: The app icon is the whole tomato
 - **Decision:** an orange disc filling the standard icon size (83% of the canvas), with its leaves.
 - **Why:** the small tomato on a dark disc vanished on a dark panel and looked half the size of the icons beside it.
@@ -16,7 +28,7 @@ Newest first.
 - **License:** tomat stays MIT under Slint's royalty-free license, which needs its badge on a public page: the README.
 
 ## 2026-11-23: How the app behaves
-- **Decision:** focus and break alternate until Stop. No popups and no sound. Opening tomat again is the way to pause, stop and move: no shortcuts and no tray.
+- **Decision:** focus and break alternate until Stop. No popups and no sound (changed later, see above: a chime, popups, and one round then stop). Opening tomat again is the way to pause, stop and move: no shortcuts and no tray.
 - **Logs:** what went wrong, plus the window opening and closing. Never a timer's start, finish or length, which would be tracking.
 - **The crash copy of the timer** lives in the runtime folder, so logout erases it and no history builds up.
 

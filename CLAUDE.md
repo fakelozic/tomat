@@ -17,7 +17,7 @@ Something broke? Read `~/.local/state/tomat/logs/` first (`docs/operations.md`).
 - The glass's colors live only in `src/glass/palette.rs`, the window's only in `window/ui/theme.slint`.
 
 ## Rules
-- **Never log or save a timer's start, finish, pause or length**, or count anything. The one exception is the crash copy in the runtime folder, erased on Stop.
+- **Never log or save a timer's start, finish, pause or length**, or count anything. So a chime or popup that fails is never logged. The one exception is the crash copy in the runtime folder, erased on Stop.
 - The glass is only the colored square and the time: no bar, no ring, no accent edge. The grab cursor is the cue that it moves.
 - Both window screens are the same size and nothing shifts. Digits are monospaced.
 - Memory matters: timer plus glass stay under 3 MiB. Never link the toolkit, an async runtime or a D-Bus client into `tomat`.

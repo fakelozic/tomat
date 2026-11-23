@@ -7,7 +7,8 @@
 | `src/host.rs` | The app's loop: timer, glass, window, saving |
 | `src/host/door.rs` | Single instance: the lock and the "show the window" socket |
 | `src/host/window.rs` | The window process as the app sees it |
-| `src/timer.rs` | The pure timer: alternation, pause, sleep, crash restore |
+| `src/host/cue.rs` | The chime and popup when a phase ends: their own processes, never waited for |
+| `src/timer.rs` | The pure timer: one focus, one break, then over; pause, sleep, crash restore |
 | `src/plan.rs` | Slots and their limits (1 to 999 minutes) |
 | `src/link.rs` | The messages between app and window |
 | `src/paths.rs` | Every file tomat touches |
@@ -39,6 +40,6 @@
 | Where it snaps | `glass/place.rs::settle` |
 | The window's look | `window/ui/theme.slint`, then the two other `.slint` files |
 | The default slots | `plan.rs::Slots::default` |
-| What happens at a phase's end | `timer.rs::Timer::tick` |
+| What happens at a phase's end | `timer.rs::Timer::tick`, `host.rs::Host::tick`, `host/cue.rs` |
 | A button | `link.rs::Ask`, `host.rs::hear_window`, `window/src/main.rs::wire` |
 | What is logged | `log.rs`'s rule first, then `docs/operations.md` |

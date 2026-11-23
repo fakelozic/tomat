@@ -2,6 +2,7 @@
 //!
 //! One thread that sleeps in poll. The glass, the window, the door and the signals wake it.
 
+mod cue;
 mod door;
 mod window;
 
@@ -17,8 +18,9 @@ use crate::glass::{Glass, Showing};
 use crate::link::{Ask, View};
 use crate::paths::Paths;
 use crate::plan::Slots;
-use crate::timer::Timer;
+use crate::timer::{Tick, Timer};
 use crate::{log, private_file};
+use cue::{Cue, Ending};
 use door::{Door, Opened};
 use window::{Closing, Leaving, Window};
 
@@ -75,6 +77,7 @@ struct Host<'a> {
     failing_since: Option<Instant>,
     window: Option<Window>,
     leaving: Vec<Leaving>,
+    cue: Cue,
 }
 
 impl<'a> Host<'a> {
@@ -104,6 +107,7 @@ impl<'a> Host<'a> {
             failing_since: None,
             window: None,
             leaving: Vec::new(),
+            cue: Cue::find(),
         };
         host.save_timer();
         host
@@ -111,17 +115,14 @@ impl<'a> Host<'a> {
 
     fn serve(&mut self) {
         loop {
-            if let Some(timer) = self.timer.as_mut()
-                && timer.tick(SystemTime::now())
-            {
-                self.save_timer();
-            }
+            self.tick();
             self.update_glass();
             let view = self.view();
             if let Some(window) = self.window.as_mut() {
                 window.show(view);
             }
             self.leaving.retain_mut(|leaving| !leaving.check());
+            self.cue.reap();
 
             let gave_up = self.failing_since.is_some_and(|since| since.elapsed() >= NO_DISPLAY);
             if self.window.is_none() && (self.timer.is_none() || gave_up) {
@@ -162,6 +163,25 @@ impl<'a> Host<'a> {
         self.leaving.clear();
     }
 
+    /// Counts the time. At the focus's end it says so; at the break's end, too, and it stops.
+    fn tick(&mut self) {
+        let Some(timer) = self.timer.as_mut() else { return };
+        match timer.tick(SystemTime::now()) {
+            Tick::Same => {}
+            Tick::Break => {
+                let rest = timer.left();
+                self.save_timer();
+                self.cue.ring(Ending::Focus { rest });
+            }
+            Tick::Over => {
+                // As if Stop was pressed: the glass goes and the crash copy is erased.
+                self.timer = None;
+                self.save_timer();
+                self.cue.ring(Ending::Round);
+            }
+        }
+    }
+
     fn view(&self) -> View {
         self.timer.as_ref().map_or(View::Slots(self.slots), |timer| {
             let left = timer.left();
@@ -170,7 +190,7 @@ impl<'a> Host<'a> {
                 phase: timer.phase(),
                 paused: timer.paused(),
                 seconds: u32::try_from(seconds).unwrap_or(u32::MAX),
-                next: timer.next_minutes(),
+                next: timer.next_break(),
             }
         })
     }
@@ -264,6 +284,8 @@ impl<'a> Host<'a> {
         let Some(window) = self.window.as_mut() else { return };
         let news = window.read();
         let mut close = news.gone.then_some(Closing::Theirs);
+        // A pause or a stop counts the time first, so an end that falls just before it is still told.
+        self.tick();
         for ask in news.asks {
             let now = SystemTime::now();
             match ask {

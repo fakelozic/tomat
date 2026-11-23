@@ -12,7 +12,7 @@ Three focus/break slots, and a timer that stays on screen. Nothing more: no trac
 2. A small piece of frosted glass shows the time over everything, fullscreen apps too. Clicks pass through it. Orange is focus, green is a break, yellow is paused.
 3. Open tomat again to pause or stop. While it is open you can also drag the glass.
 
-Focus and break alternate until you press Stop. The glass follows KDE between dark and light.
+One focus, one break, then tomat stops by itself: start the next round when you're ready. A soft chime and a popup mark each end; the popups stay 2 seconds and don't stay in Plasma's history. The glass follows KDE between dark and light.
 
 | Key, in the window | Does |
 |---|---|
@@ -36,7 +36,7 @@ scripts/install.sh --uninstall
 
 ## What it saves
 
-Only on your PC: the three slots, where you put the glass, the running timer until you press Stop (so a crash doesn't lose it), and 7 days of logs of what went wrong. The logs never say when a timer started, finished or how long it was. See [docs/data.md](docs/data.md).
+Only on your PC: the three slots, where you put the glass, the running timer until its round ends or you press Stop (so a crash doesn't lose it), and 7 days of logs of what went wrong. The logs never say when a timer started, finished or how long it was. See [docs/data.md](docs/data.md).
 
 It uses about 1 MB of RAM while a timer runs. The window adds about 17 MB, only while it is open.
 
